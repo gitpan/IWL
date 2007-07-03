@@ -233,7 +233,7 @@ Object.extend(Object.extend(Tree, Widget), {
 	    if (!row_data) continue;
             var row = null;
 	    if (typeof row_data === 'string') {
-		new Insertion.Bottom(this.body, decodeURIComponent(row_data));
+		new Insertion.Bottom(this.body, unescape(row_data));
 		row = $A(this.body.rows).last();
 		if (!row.id)
 		    row.id = 'tree_row_' + Math.random();
@@ -332,7 +332,8 @@ Object.extend(Object.extend(Tree, Widget), {
 	    isAlternating: false,
 	    multipleSelect: false,
 	    clickToExpand: false,
-	    scrollToSelection: false
+	    scrollToSelection: false,
+	    animate: false
 	}, arguments[2] || {});
 
 	if (!this.body) return;
@@ -345,7 +346,7 @@ Object.extend(Object.extend(Tree, Widget), {
 	}.bind(this));
 	this.nav_images = {};
 	for (var i in images)
-	    this.nav_images[i] = decodeURIComponent(images[i]);
+	    this.nav_images[i] = unescape(images[i]);
 	this.nav_images['span'] = '<span class="tree_nav_con"></span>';
 	setTimeout(this.__initNavRebuild.bind(this, this.body.rows.length), 100);
 
@@ -645,7 +646,10 @@ Object.extend(Object.extend(Row, Widget), {
 	var child_rows = this.childRows(true);
 	if (!child_rows.length) return;
 	child_rows.each(function(child) {
-	    child.hide();
+	    if (child.tree.options.animate)
+		new Effect.SlideUp(child, {duration: 0.5});
+	    else
+		child.hide();
 	    if (child.isParent)
 		child.collapse();
 	});
@@ -663,7 +667,7 @@ Object.extend(Object.extend(Row, Widget), {
 	var child_rows = this.childRows(true);
 	if (child_rows.length) {
 	    child_rows.each(function(child) {
-		child.show();
+		child.show()
 		if (all && child.childList.length) child.expand(all);
 		else child._rebuildNav();
 	    });
@@ -735,7 +739,7 @@ Object.extend(Object.extend(Row, Widget), {
 	this.tree = tree;
 	this.childList = [];
 
-	var row_data = decodeURIComponent(this.readAttribute('iwl:treeRowData') || '{}').evalJSON();
+	var row_data = unescape(this.readAttribute('iwl:treeRowData') || '{}').evalJSON();
 	if (row_data.childList)
 	    row_data.childList = row_data.childList.map(function($_) {
 		return $($_);
@@ -825,7 +829,7 @@ Object.extend(Object.extend(Row, Widget), {
 	}
     },
     _expandResponse: function(json, params) {
-	if (json.length != 0) {
+	if (json && json.length != 0) {
 	    this.append(json);
 	    this.expand(params.all);
 	}

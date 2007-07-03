@@ -107,9 +107,9 @@ Object.extend(Object.extend(Druid, Widget), {
 	    return;
 	}
 	this.pageContainer = this.down();
-	this.currentPage = this.pageContainer.getElementsByClassName(
+	this.currentPage = this.pageContainer.getElementsBySelector('.' +
 		$A(this.classNames()).first() + '_page_selected')[0];
-        this.finishText = decodeURIComponent(text);
+        this.finishText = unescape(text);
         this.nextText = this.nextButton.getLabel();
 	this.pages = [];
 	this.pageContainer.childElements().each(function($_) {
@@ -166,9 +166,13 @@ Object.extend(Object.extend(Page, Widget), {
 	} else {
 	    if (!this.isSelected()) return;
 	    var callback;
-	    if (this.check.callback && !ignoreCheck) {
-		if (window[this.check.callback]) var retval = window[this.check.callback].call(this, this.check.param);
-		if (!retval) return;
+	    if (!ignoreCheck) {
+		if (this.check.callback) {
+		    if (window[this.check.callback]) var retval = window[this.check.callback].call(this, this.check.param);
+		    if (!retval) return;
+		} else if (this.emitEvent('IWL-Druid-Page-check', {onComplete: this.__completeCheck.bind(this)})) {
+		    return;
+		}
 	    }
 	    this.removeClassName(base_class + '_selected');
 	    this.hide();
@@ -228,7 +232,7 @@ Object.extend(Object.extend(Page, Widget), {
 	this.druid = druid;
 	this.check = {
 	    callback: this.readAttribute('iwl:druidCheckCallback'),
-	    param: decodeURIComponent(this.readAttribute('iwl:druidCheckParam') || '[]').evalJSON()
+	    param: unescape(this.readAttribute('iwl:druidCheckParam') || '[]').evalJSON()
 	}
 	if (this.check.param) this.check.param = this.check.param.shift();
     },
@@ -248,5 +252,13 @@ Object.extend(Object.extend(Page, Widget), {
 
 	if (prev) this.druid.backButton.setStyle({visibility: 'visible'});
 	else this.druid.backButton.setStyle({visibility: 'hidden'});
+    },
+    __completeCheck: function(data, params) {
+	if (!data.userExtras.deter) {
+	    var next = this.nextPage();
+	    if (next) next.setSelected(true, true);
+	} else {
+	    eval(data.data);
+	}
     }
 });

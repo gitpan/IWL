@@ -9,7 +9,7 @@ use strict;
 
 use base qw(Exporter);
 use vars qw(@EXPORT_OK);
-@EXPORT_OK = qw(encodeURI decodeURI encodeURIComponent escapeHTML unescapeHTML randomize);
+@EXPORT_OK = qw(encodeURI decodeURI encodeURIComponent escape unescape escapeHTML unescapeHTML randomize);
 
 =head1 NAME
 
@@ -35,12 +35,11 @@ sub encodeURI {
     my $string = shift;
 
     return '' unless defined $string;
-    my $copy = $string;
 
-    turn_utf_8_off $copy;
-    $copy =~ s/([^0-9a-zA-Z_.!~*'();,\/?:@&=+#\$\x80-\xff-])/'%' . unpack ('H2', $1)/eg;
+    turn_utf_8_off $string;
+    $string =~ s/([^0-9a-zA-Z_.!~*'();,\/?:@&=+#\$\x80-\xff-])/'%' . unpack ('H2', $1)/eg;
 
-    return $copy
+    return $string
 }
 
 =item B<decodeURI> (B<STRING>)
@@ -55,13 +54,12 @@ sub decodeURI {
     my $string = shift;
 
     return '' unless defined $string;
-    my $copy = $string;
 
-    $copy =~ s/\+/ /g;
-    $copy =~ s/\%([0-9a-fA-F]{2})/pack('H2', $1)/eg;
-    turn_utf_8_on $copy;
+    $string =~ s/\+/ /g;
+    $string =~ s/\%([0-9a-fA-F]{2})/pack('H2', $1)/eg;
+    turn_utf_8_on $string;
 
-    return $copy
+    return $string
 }
 
 =item B<encodeURIComponent> (B<STRING>)
@@ -70,18 +68,64 @@ Encodes the string by replacing each instance of certain characters by one, two,
 
 Parameters: B<STRING> - the string to encode
 
+NOTE: Internet explorer suffers a severe slowdown for decodeURIComponent with large strings. escape(3pm) should be used instead, when not dealing with encoding URI components.
+
 =cut
 
 sub encodeURIComponent {
     my $string = shift;
 
     return '' unless defined $string;
-    my $copy = $string;
 
-    turn_utf_8_off $copy;
-    $copy =~ s/([^0-9a-zA-Z_.!~*'()\x80-\xff-])/'%'.unpack('H2', $1)/eg;
+    turn_utf_8_off $string;
+    $string =~ s/([^0-9a-zA-Z_.!~*'()\x80-\xff-])/'%'.unpack('H2', $1)/eg;
 
-    return $copy
+    return $string
+}
+
+=item B<escape> (B<STRING>, [B<ENCODING>])
+
+Escapes the string with character semantics. Similar to javascript's escape()
+
+Parameters: B<STRING> - the string to escape, B<ENCODING> - optional, the encoding of the string (defaults to 'utf-8')
+
+=cut
+
+sub escape {
+    my ($string, $encoding) = @_;
+    $encoding ||= 'utf-8';
+
+    return '' unless defined $string;
+
+    $string =~ s/%/%25/g;
+
+    $string =~ s/\\/%5C/g;
+    $string =~ s/&/%26/g;
+    $string =~ s/</%3C/g;
+    $string =~ s/>/%3E/g;
+    $string =~ s/\"/%22/g;
+    $string =~ s/\'/%27/g;
+    $string =~ s/\n/%0A/g;
+
+    return $string;
+}
+
+=item B<unescape> (B<STRING>)
+
+Unescapes a string, previously escaped using escape(3pm)
+
+Parameters: B<STRING> - the string to unescape
+
+=cut
+
+sub unescape {
+    my ($string) = @_;
+    $string =~ s/%u([0-9a-f]{4})/\\x{$1}/ig;
+    $string =~ s/%([0-9a-f]{2})/\\x{$1}/ig;
+
+    $string = eval qq|"$string"|;
+
+    return $string;
 }
 
 =item B<escapeHTML> (B<STRING>)

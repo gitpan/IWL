@@ -27,6 +27,19 @@ IWL::Anchor->new ([B<%ARGS>])
 
 Where B<%ARGS> is an optional hash parameter with with key-values corresponding to the attributes that a regular B<<a>> markup would have.
 
+=head1 SIGNALS
+
+=over 4
+
+=item B<focus>
+
+Fires when the anchor receives focus either via the pointing device or by tab navigation
+
+=item B<blur>
+
+Fires when the anchor loses focus either via the pointing device or by tabbing navigation
+
+=back
 
 =cut
 
@@ -114,6 +127,22 @@ sub setText {
 
     my $text_obj = IWL::Text->new($text);
     return $self->appendChild($text_obj);
+}
+
+=item B<getText>
+
+Rethrs the text of the anchor
+
+=cut
+
+sub getText {
+    my ($self) = @_;
+    my $text_label = '';
+    foreach (@{$self->{childNodes}}) {
+	$text_label .= $_->getContent if $_->isa('IWL::Text');
+    }
+
+    return $text_label;
 }
 
 1;

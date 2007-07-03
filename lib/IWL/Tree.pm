@@ -6,9 +6,9 @@ package IWL::Tree;
 use strict;
 
 use IWL::Script;
-use IWL::String qw(randomize encodeURIComponent);
+use IWL::String qw(randomize escape);
 
-use base qw(IWL::Table IWL::RPC::Request);
+use base qw(IWL::Table);
 
 use Scalar::Util qw(weaken);
 use JSON;
@@ -37,6 +37,33 @@ Where B<%ARGS> is an optional hash parameter with with key-values:
   scrollToSelection: true if the selected row should be scrolled into
                      visibility
   alternate: true if the tree should alternate
+  animate: true if the tree should animate the collapse of its rows
+
+=head1 SIGNALS
+
+=over 4
+
+=item B<select_all>
+
+Fires when all rows of the tree have been selected
+
+=item B<unselect_all>
+
+Fires when all rows of the tree have been unselected
+
+=item B<row_activate>
+
+Fires when a row has been activated by double-clicking on it, or pressing [Enter]
+
+=item B<row_collapse>
+
+Fires when a row has collapsed
+
+=item B<row_expand>
+
+Fires when a row has expanded
+
+=back
 
 =cut
 
@@ -55,6 +82,7 @@ sub new {
     $options->{multipleSelect} = 1 if $args{multipleSelect};
     $options->{scrollToSelection} = 1 if $args{scrollToSelection};
     $options->{alternate} = 1 if $args{alternate};
+    $options->{animate} = 1 if $args{animate};
     delete @args{qw(list multipleSelect scrollToSelection alternate)};
 
     my $self = $class->SUPER::new(%args);
@@ -113,6 +141,16 @@ sub setList {
     return $self;
 }
 
+=item B<isList>
+
+Returns true if the tree is a list
+
+=cut
+
+sub isList {
+    return !(!shift->{_options}{list});
+}
+
 =item B<setSortableCallback> (B<COL_INDEX>, B<JS_CALLBACK>)
 
 Sets the callback to provide the sorting function for the tree/list, based on the column with index B<COL_NUM>
@@ -141,6 +179,19 @@ sub appendRow {
     return $self->appendBody($row);
 }
 
+=item B<prependRow> (B<ROW>)
+
+Prepeds an array of rows to the body to the tree. An alias to the B<prependBody> method.
+
+Parameters: B<ROW> - a row of IWL::Tree::Row(3pm)
+
+=cut
+
+sub prependRow {
+    my ($self, $row) = @_;
+    return $self->prependBody($row);
+}
+
 
 # Overrides
 #
@@ -162,11 +213,32 @@ sub appendBody {
     return $self;
 }
 
+sub prependBody {
+    my ($self, $row) = @_;
+
+    $self->{_body}->prependChild($row);
+    $self->{_bodyRows}{$row} = 1;
+    weaken($row->{_tree} = $self);
+    $self->__flag_children($row);
+    unshift @{$self->{_body}{_children}}, $row;
+
+    $row->_rebuildPath;
+
+    return $self;
+}
+
 sub appendHeader {
     my ($self, $row) = @_;
     weaken($row->{_tree} = $self);
     $row->setNavigation(0);
     $self->SUPER::appendHeader($row);
+}
+
+sub prependHeader {
+    my ($self, $row) = @_;
+    weaken($row->{_tree} = $self);
+    $row->setNavigation(0);
+    $self->SUPER::prependHeader($row);
 }
 
 sub appendFooter {
@@ -175,20 +247,26 @@ sub appendFooter {
     $self->SUPER::appendFooter($row);
 }
 
+sub prependFooter {
+    my ($self, $row) = @_;
+    weaken($row->{_tree} = $self);
+    $self->SUPER::prependFooter($row);
+}
+
 # Protected
 #
 sub _realize {
     my $self    = shift;
     my $cell    = IWL::Tree::Cell->new;
     my $script  = IWL::Script->new;
-    my $b       = encodeURIComponent($cell->_blank_indent->getContent);
-    my $i       = encodeURIComponent($cell->_row_indent->getContent);
-    my $l       = encodeURIComponent($cell->_l_junction->getContent);
-    my $l_e     = encodeURIComponent($cell->_l_expand->getContent);
-    my $l_c     = encodeURIComponent($cell->_l_collapse->getContent);
-    my $t       = encodeURIComponent($cell->_t_junction->getContent);
-    my $t_e     = encodeURIComponent($cell->_t_expand->getContent);
-    my $t_c     = encodeURIComponent($cell->_t_collapse->getContent);
+    my $b       = escape($cell->_blank_indent->getContent);
+    my $i       = escape($cell->_row_indent->getContent);
+    my $l       = escape($cell->_l_junction->getContent);
+    my $l_e     = escape($cell->_l_expand->getContent);
+    my $l_c     = escape($cell->_l_collapse->getContent);
+    my $t       = escape($cell->_t_junction->getContent);
+    my $t_e     = escape($cell->_t_expand->getContent);
+    my $t_c     = escape($cell->_t_collapse->getContent);
     my $id      = $self->getId;
     my $options = {};
 
@@ -196,12 +274,10 @@ sub _realize {
     $self->SUPER::_realize;
     $options->{multipleSelect} = "true" if $self->{_options}{multipleSelect};
     $options->{isAlternating} = "true" if $self->{_options}{alternate};
+    $options->{animate} = "true" if $self->{_options}{animate};
     $options->{scrollToSelection} = "true" if $self->{_options}{scrollToSelection};
     $options = objToJson($options);
 
-    $self->{_header}->prependClass($self->{_defaultClass} . '_header');
-    $self->{_footer}->prependClass($self->{_defaultClass} . '_footer');
-    $self->{_body}->prependClass($self->{_defaultClass} . '_body');
     $self->_set_alternate if $self->{_options}{alternate};
 
     my $images = qq({b:"$b",i:"$i",l:"$l",l_e:"$l_e",l_c:"$l_c",t:"$t",t_e:"$t_e",t_c:"$t_c"});
@@ -236,8 +312,8 @@ sub _refreshEvent {
     $list = [] unless ref $list eq 'ARRAY';
 
     print '{rows: ['
-           . join(',', map {'"' . encodeURIComponent($_->getContent) . '"'} @$list)
-           . '], user_extras: ' . (objToJson($user_extras) || 'null'). '}';
+           . join(',', map {'"' . escape($_->getContent) . '"'} @$list)
+           . '], userExtras: ' . (objToJson($user_extras) || 'null'). '}';
 }
 
 # Internal

@@ -7,7 +7,6 @@ use strict;
 use IWL;
 use IWL::Config qw(%IWLConfig);
 use IWL::Ajax qw(updaterCallback);
-use IWL::String qw(encodeURIComponent);
 
 my $rpc = IWL::RPC->new;
 my %form = $rpc->getParams();
@@ -91,13 +90,21 @@ EOF
     }
 );
 
+# Druid handler
+$rpc->handleEvent(
+    'IWL-Druid-Page-check',
+    sub {
+	my $params = shift;
+	my $extra = {};
+
+	$extra->{deter} = 1 unless $params->{check};
+	return "displayStatus('To proceed to the next page, select the checkbox and try again.')", $extra;
+    }
+);
+
 if (my $file = $form{upload_file}) {
     my $name = $file->[1];
-    my $json = IWL::Text->new;
-    my $page = IWL::Page->new(simple => 1);
-    $json->setContent("{message:'$name uploaded.'}");
-    $page->appendChild($json);
-    $page->print;
+    IWL::Upload::printMessage("$name uploaded.");
     exit 0;
 } elsif (my $text = $form{text}) {
     IWL::Object::printHTMLHeader;
@@ -107,7 +114,7 @@ if (my $file = $form{upload_file}) {
 } else {
     my $page = IWL::Page->new;
     my $hbox = IWL::HBox->new;
-    my $tree = IWL::Tree->new(id => 'widgets_tree', alternate => 1);
+    my $tree = IWL::Tree->new(id => 'widgets_tree', alternate => 1, animate => 1);
     my $notebook = IWL::Notebook->new(id => 'main_notebook');
     my $container = IWL::Container->new(id => 'content');
     my $style = IWL::Page::Link->newLinkToCSS($IWLConfig{SKIN_DIR} . '/demo.css');
@@ -285,9 +292,9 @@ sub generate_entries {
     $image_entry->setIconFromStock('IWL_STOCK_SAVE', 'left', 1);
     $image_entry->{image1}->signalConnect(click => updaterCallback(
 	    'entries_container', 'iwl_demo.pl',
-	    parameters => 'text: $F("image_entry_text") || false',
+	    parameters => "text: \$F('image_entry_text') || false",
 	    insertion => 'bottom',
-	    onComplete => 'displayStatus("Completed")',
+	    onComplete => q|displayStatus.bind(this, 'Completed')|,
     ));
     return $container->getObject;
 }
@@ -406,7 +413,7 @@ sub generate_menus {
     $menubar->appendMenuItem('Edit', undef, id => 'edit_mi')->setSubmenu($edit_menu);
     $menubar->appendMenuSeparator;
     $menubar->appendMenuItem('Help', undef, id => 'help_mi', class => 'demo')->
-      signalConnect('click' => q|displayStatus("Don't panic!")|);
+      signalConnect('click' => q|displayStatus('Don\\'t panic!')|);
 
     $file_menu->appendMenuItem('Open')->setClass('demo');
     $file_menu->appendMenuItem('Save', 'IWL_STOCK_SAVE');
@@ -552,15 +559,19 @@ sub generate_contentbox {
 
 sub generate_druid {
     my $container = IWL::Container->new(id => 'druid_container');
-    my $druid = IWL::Druid->new(id => 'druid');
+    my $druid = IWL::Druid->new(id => 'druid')->setStyle(width => '300px');
     my $label1 = IWL::Label->new;
     my $label2 = IWL::Label->new;
 
-    $container->appendChild($druid);
-    $druid->appendPage($label1)->signalConnect(remove => "displayStatus('Page 1 removed.')");;
+    my $page1 = $druid->appendPage($label1)->signalConnect(remove => "displayStatus('Page 1 removed.')");;
     $druid->appendPage($label2)->signalConnect(select => "displayStatus('Page 2 selected.')");
+    $container->appendChild($druid);
     $label1->setText('This is page 1');
     $label2->setText('This is page 2');
+    $page1->appendChild(IWL::Checkbox->new(id => 'druid_check'));
+    $page1->registerEvent('IWL-Druid-Page-check', 'iwl_demo.pl', {
+	    onStart => q|params.check = $('druid_check').checked|
+    });
 
     return $container->getObject;
 }
@@ -735,7 +746,7 @@ sub show_the_code_for {
     my $paragraph = IWL::Label->new;
 
     if ($code_for eq 'buttons_container') {
-	$paragraph->appendTextType(read_code("generate_buttons", 22), 'pre');
+	$paragraph->appendTextType(read_code("generate_buttons", 24), 'pre');
     } elsif ($code_for eq 'entries_container') {
 	$paragraph->appendTextType(read_code("generate_entries", 24), 'pre');
     } elsif ($code_for eq 'images_container') {
@@ -759,7 +770,8 @@ sub show_the_code_for {
     } elsif ($code_for eq 'contentbox_container') {
 	$paragraph->appendTextType(read_code("generate_contentbox", 22), 'pre');
     } elsif ($code_for eq 'druid_container') {
-	$paragraph->appendTextType(read_code("generate_druid", 15), 'pre');
+	$paragraph->appendTextType(read_code("generate_druid", 18), 'pre');
+	$paragraph->appendTextType(read_code("Druid handler", 11), 'pre');
     } elsif ($code_for eq 'notebook_container') {
 	$paragraph->appendTextType(read_code("generate_notebook", 15), 'pre');
     } elsif ($code_for eq 'tooltips_container') {

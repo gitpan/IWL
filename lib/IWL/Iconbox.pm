@@ -6,10 +6,10 @@ package IWL::Iconbox;
 use strict;
 
 use IWL::Script;
-use IWL::String qw(randomize encodeURIComponent);
+use IWL::String qw(randomize escape);
 use Locale::TextDomain qw(org.bloka.iwl);
 
-use base qw(IWL::Container IWL::RPC::Request);
+use base qw(IWL::Container);
 
 use JSON;
 use Scalar::Util qw(weaken);
@@ -34,6 +34,24 @@ Where B<%ARGS> is an optional hash parameter with with key-value options. These 
   width: width of the iconbox without the borders
   height: height of the iconbox without the borders
   multipleSelect: true if the iconbox should be able to select multiple icons
+
+=head1 SIGNALS
+
+=over 4
+
+=item B<select_all>
+
+Fires when all the icons have been selected
+
+=item B<unselect_all>
+
+Fires when all the icons have been unselected
+
+=item B<load>
+
+Fires when the iconbox and its icons have finished loading
+
+=back
 
 =cut
 
@@ -66,6 +84,7 @@ sub appendIcon {
     $self->{__iconCon}->appendChild($icon);
     weaken($icon->{_iconbox} = $self);
     push @{$self->{__icons}}, $icon;
+    return $icon;
 }
 
 =item B<prependIcon> (B<ICON>)
@@ -81,6 +100,7 @@ sub prependIcon {
     $self->{__iconCon}->prependChild($icon);
     weaken($icon->{_iconbox} = $self);
     unshift @{$self->{__icons}}, $icon;
+    return $icon;
 }
 
 # Overrides
@@ -89,6 +109,7 @@ sub setId {
     my ($self, $id) = @_;
 
     $self->SUPER::setId($id);
+    $self->{__iconCon}->setId($id . "_icon_container");
     $self->{__statusLabel}->setId($id . "_status_label")
       if $self->{__statusLabel};
     return $self;
@@ -103,11 +124,11 @@ sub _realize {
     my $options = objToJson($self->{_options});
 
     # TRANSLATORS: {TITLE} is a placeholder
-    my $delete  = __"The icon {TITLE} was removed.";
+    my $delete  = escape(__"The icon '{TITLE}' was removed.");
 
     $self->SUPER::_realize;
 
-    $script->setScript("Iconbox.create('$id', $options, {delete: '$delete'});");
+    $script->setScript("Iconbox.create('$id', $options, {'delete': '$delete'});");
     foreach my $icon (@{$self->{__icons}}) {
 	my $icon_id = $icon->getId;
         $script->appendScript("\$('$id').selectIcon('$icon_id');")
@@ -120,7 +141,8 @@ sub _setupDefaultClass {
     my ($self) = @_;
 
     $self->SUPER::prependClass($self->{_defaultClass});
-    $self->{__statusLabel}->prependClass($self->{_defaultClass} . "_status")
+    $self->{__iconCon}->prependClass($self->{_defaultClass} . "_icon_container");
+    $self->{__statusLabel}->prependClass($self->{_defaultClass} . "_status_label")
       if $self->{__statusLabel};
     foreach my $icon (@{$self->{__icons}}) {
 	$icon->prependClass($self->{_defaultClass} . '_icon') unless $icon->getClass;
@@ -151,43 +173,41 @@ sub _refreshEvent {
     $list = [] unless ref $list eq 'ARRAY';
 
     print '{icons: ['
-           . join(',', map {'"' . encodeURIComponent($_->getContent) . '"'} @$list)
-           . '], user_extras: ' . (objToJson($user_extras) || 'null'). '}';
+           . join(',', map {'"' . escape($_->getContent) . '"'} @$list)
+           . '], userExtras: ' . (objToJson($user_extras) || 'null'). '}';
 }
 
 # Internal
 #
 sub __init {
     my ($self, %args) = @_;
-    my $icon_con      = IWL::Container->new;
+    my $icon_con = IWL::Container->new;
 
-    $self->{_selected}      = IWL::Script->new;
-    $self->{__iconCon}      = $icon_con;
-    $self->{__icons}        = [];
+    $self->{_selected}     = IWL::Script->new;
+    $self->{__iconCon}     = $icon_con;
+    $self->{__icons}       = [];
     $self->{_defaultClass} = 'iconbox';
 
     $self->{_options} = {multipleSelect => 'false', clickToSelect => 'false'};
     $self->{_options}{multipleSelect} = 'true' if $args{multipleSelect};
-    $self->{_options}{clickToSelect} = 'true' if $args{clickToSelect};
+    $self->{_options}{clickToSelect}  = 'true' if $args{clickToSelect};
     $self->appendChild($icon_con);
     if (!$args{withoutStatusBar}) {
-	my $status_label = IWL::Container->new;
+        my $status_label = IWL::Container->new;
 
-	$self->{__statusLabel} = $status_label;
-	# One-line status line
-	$status_label->setStyle(height => '1.5em');
-	$self->appendChild($status_label);
+        $self->{__statusLabel} = $status_label;
+        $self->appendChild($status_label);
     }
 
     $args{id} = randomize($self->{_defaultClass}) if !$args{id};
     delete @args{qw(multipleSelect clickToSelect withoutStatusBar)};
 
-    $self->setStyle(width      => $args{width})  if $args{width};
-    $icon_con->setStyle(height => $args{height}) if $args{height};
+    $self->setStyle(width        => $args{width})  if $args{width};
+    $icon_con->setStyle(height   => $args{height}) if $args{height};
+    $icon_con->setStyle(overflow => 'auto');
 
-    $icon_con->setStyle('overflow' => 'auto');
-
-    $self->{_customSignals} = {select_all => [], unselect_all => [], load => []};
+    $self->{_customSignals} =
+      {select_all => [], unselect_all => [], load => []};
     $self->_constructorArguments(%args);
     $self->requiredJs('base.js', 'iconbox.js');
 }

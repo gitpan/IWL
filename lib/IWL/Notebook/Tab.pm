@@ -8,6 +8,8 @@ use strict;
 use base qw(IWL::Widget);
 
 use JSON;
+use IWL::Anchor;
+use IWL::Container;
 use IWL::String qw(randomize);
 
 =head1 NAME
@@ -27,6 +29,24 @@ The notebook tab widget is a helper widget used by the IWL::Notebook(3pm)
 IWL::Notebook::Tab->new ([B<%ARGS>])
 
 Where B<%ARGS> is an optional hash parameter with with key-values.
+
+=head1 SIGNALS
+
+=over 4
+
+=item B<select>
+
+Fires when the tab is selected
+
+=item B<unselect>
+
+Fires when the tab is unselected
+
+=item B<remove>
+
+Fires when the tab is removed
+
+=back
 
 =cut
 
@@ -90,6 +110,16 @@ sub setTitle {
     return $self;
 }
 
+=item B<getTitle>
+
+Returns the title of the tab
+
+=cut
+
+sub getTitle {
+    return shift->{__anchor}->getText;
+}
+
 =item B<setSelected> (B<BOOL>)
 
 Sets whether the tab is the currently selected tab
@@ -103,6 +133,16 @@ sub setSelected {
 
     $self->{__selected} = $bool ? 1 : 0;
     return $self;
+}
+
+=item B<isSelected>
+
+Returns true if the tab is the currently selected one
+
+=cut
+
+sub isSelected {
+    return shift->{__selected};
 }
 
 # Overrides
@@ -124,11 +164,11 @@ sub setId {
 sub _setupDefaultClass {
     my $self = shift;
 
-    if ($self->{__selected}) {
-	$self->SUPER::prependClass($self->{_defaultClass} . '_selected');
+    if ($self->isSelected) {
+	$self->prependClass($self->{_defaultClass} . '_selected');
 	$self->{_page}->prependClass('notebook_page_selected');
     }
-    $self->SUPER::prependClass($self->{_defaultClass});
+    $self->prependClass($self->{_defaultClass});
     $self->{_page}->prependClass('notebook_page');
     $self->{__anchor}->prependClass($self->{_defaultClass} . '_anchor');
 }
@@ -142,7 +182,7 @@ sub __init {
 
     $self->{_tag} = 'li';
     $self->{_defaultClass} = 'notebook_tab';
-    $args{id} = randomize($self->{_defaultClass}) if !$args{id};
+    $args{id} ||= randomize($self->{_defaultClass});
 
     $self->{_page} = $page;
     $self->{__anchor} = $anchor;

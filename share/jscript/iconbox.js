@@ -143,7 +143,7 @@ Object.extend(Object.extend(Iconbox, Widget), {
 	    if (!icon_data) continue;
             var icon = null;
 	    if (typeof icon_data === 'string') {
-		new Insertion.Bottom(this.iconsContainer, decodeURIComponent(icon_data));
+		new Insertion.Bottom(this.iconsContainer, unescape(icon_data));
 		icon = this.iconsContainer.childElements().last();
 		if (!icon.id)
 		    icon.id = 'iconbox_icon_' + Math.random();
@@ -420,7 +420,7 @@ Object.extend(Object.extend(Icon, Widget), {
 	if (prev) prev.setSelected(true);
 	dom_parent.removeChild(this);
 	this.iconbox.icons = this.iconbox.icons.without(this);
-	var message = this.iconbox.messages['delete'].replace(/{TITLE}/, "'" + title + "'");
+	var message = unescape(this.iconbox.messages['delete']).replace(/{TITLE}/, title);
 	this.iconbox.statusbarPush(message);
 	this.iconbox._alignIconsVertically();
 	this.emitSignal('remove');
@@ -429,7 +429,7 @@ Object.extend(Object.extend(Icon, Widget), {
 
     _init: function(id, iconbox) {
 	this.iconbox = iconbox;
-	this.label = this.getElementsByClassName('icon_label')[0];
+	this.label = this.getElementsBySelector('.icon_label')[0];
 	this.__initEvents();
 	if (this._loaded)
 	    this.iconbox._iconCountdown();

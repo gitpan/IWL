@@ -9,6 +9,9 @@ use base 'IWL::Container';
 
 use Locale::TextDomain qw(org.bloka.iwl);
 use IWL::String qw(randomize);
+use IWL::Label;
+use IWL::Entry;
+use IWL::Button;
 use JSON;
 
 =head1 NAME
@@ -28,6 +31,24 @@ A page control widget for page-capable widgets
 IWL::PageControl->new ([B<%ARGS>])
 
 Where B<%ARGS> is an optional hash parameter with with key-values.
+
+=head1 SIGNALS
+
+=over 4
+
+=item B<load>
+
+Fires when the pagecontrol has finished loading
+
+=item B<current_page_is_changing>
+
+Fires when the current page of the pagecontrol begins to change
+
+=item B<current_page_change>
+
+Fires when the current page of the pagecontrol has changed
+
+=back
 
 =cut
 
@@ -58,13 +79,14 @@ Note: The widget id must not be changed after this method is called.
 
 sub bindToWidget {
     my ($self, $widget, $url, $params) = @_;
+    my $id = $widget->getId;
 
-    return unless $widget && $widget->can('registerEvent');
+    return unless $widget && $widget->can('registerEvent') && $id;
 
     my $event_name = ref($widget) . "::refresh";
     $event_name =~ s/::/-/g;
     $self->{__bind}{eventName} = $event_name;
-    $self->{__bind}{widgetId} = $widget->getId;
+    $self->{__bind}{widgetId} = $id;
     $self->{__options}{bound} = 1;
 
     $widget->registerEvent($event_name, $url, $params);
@@ -80,7 +102,7 @@ Returns whether the page control is bound to a widget
 sub isBound {
     my $self = shift;
 
-    return $self->{__options}{bound};
+    return !(!$self->{__options}{bound});
 }
 
 # Overrides
@@ -169,6 +191,7 @@ sub __init {
     $self->{__options} = {};
     $self->{__options}{pageCount} = $args{pageCount};
     $self->{__options}{pageSize} = $args{pageSize};
+    $self->{__options}{page} = $args{page} || 1;
 
     $self->{__bind}{bound} = 0;
     delete @args{qw(pageCount pageSize)};

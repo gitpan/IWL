@@ -5,8 +5,8 @@ package IWL::Upload;
 
 use strict;
 
-use IWL::Widget;
 use IWL::Button;
+use IWL::File;
 use IWL::String qw(randomize);
 
 use base 'IWL::Form';
@@ -60,8 +60,18 @@ Parameters: B<EXPR> - the expression which is used for filtering
 sub setAccept {
     my ($self, $expr) = @_;
 
-    $self->{__file}->setAttribute(accept => $expr);
+    $self->{__file}->setAccept($expr);
     return $self;
+}
+
+=item B<getAccept>
+
+Returns the accept filter
+
+=cut
+
+sub getAccept {
+    return shift->{__file}->getAccept;
 }
 
 =item B<setLabel> (B<TEXT>)
@@ -79,6 +89,16 @@ sub setLabel {
     return $self;
 }
 
+=item B<getLabel>
+
+Returns the label of the button
+
+=cut
+
+sub getLabel {
+    return shift->{__button}->getLabel;
+}
+
 =item B<setUploadCallback> (B<CALLBACK>)
 
 Sets the function to be executed when a file has been uploaded.
@@ -91,6 +111,27 @@ sub setUploadCallback {
     my ($self, $callback) = @_;
 
     $self->{__uploadCallback} = $callback;
+    return $self;
+}
+
+=item B<printMessage> (B<MESSAGE>)
+
+Prints a message, so that it can be displayed in the upload tooltip
+
+This method is a class method!  You do not need to instantiate an object
+in order to call it.
+
+=cut
+
+sub printMessage {
+    my $message = shift;
+    $message = shift if ref $message;
+
+    my $json = IWL::Text->new;
+    my $page = IWL::Page->new(simple => 1);
+    $json->setContent("{message:'$message'}");
+    $page->appendChild($json);
+    $page->print;
 }
 
 # Overrides
@@ -136,7 +177,7 @@ sub _setupDefaultClass {
 sub __init {
     my ($self, %args) = @_;
     my $frame  = IWL::Widget->new;
-    my $file   = IWL::Input->new;
+    my $file   = IWL::File->new;
     my $button = IWL::Button->new(size => 'medium');
     my $init   = IWL::Script->new;
 
@@ -154,7 +195,6 @@ sub __init {
     delete @args{qw(id)};
 
     $button->setLabel('Browse ...');
-    $file->setAttribute(type => 'file');
     $frame->{_tag} = 'iframe';
     $file->_constructorArguments(%args);
     $self->requiredJs('base.js', 'upload.js', 'tooltip.js');

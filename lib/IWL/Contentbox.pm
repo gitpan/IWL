@@ -48,6 +48,16 @@ IWL::Contentbox->new ([B<%ARGS>])
   closeModalOnClick 
              - makes the window close when the user clicks outside of it
 
+=head1 SIGNALS
+
+=over 4
+
+=item B<close>
+
+Fires when the contentbox has closed
+
+=back
+
 =cut
 
 sub new {
@@ -76,7 +86,8 @@ Parameters: B<WIDGET> - the widget of type IWL::Widget(3pm) with which to fill t
 sub appendTitle {
     my ($self, $widget) = @_;
 
-    return $self->{__titler}->appendChild($widget);
+    $self->{__titler}->appendChild($widget);
+    return $self;
 }
 
 =item B<appendTitleText> (B<TEXT>)
@@ -131,7 +142,8 @@ sub appendHeaderText {
     $label->setText($text);
 
     $self->{__header}{_ignore} = 0;
-    return $self->{__header}->appendChild($label);
+    $self->{__header}->appendChild($label);
+    return $self;
 }
 
 =item B<appendContent> (B<WIDGET>)
@@ -165,7 +177,8 @@ sub appendContentText {
 
     $label->setText($text);
 
-    return $self->{__content}->appendChild($label);
+    $self->{__content}->appendChild($label);
+    return $self;
 }
 
 =item B<appendFooter> (B<WIDGET>)
@@ -201,7 +214,8 @@ sub appendFooterText {
     $label->setText($text);
 
     $self->{__footer}{_ignore} = 0;
-    return $self->{__footerr}->appendChild($label);
+    $self->{__footerr}->appendChild($label);
+    return $self;
 }
 
 =item B<setType> (B<TYPE>)

@@ -125,10 +125,6 @@ function createHtmlElement(obj, paren, before_el) {
 		    attributes += ' ' + i;
 		} else {
 		    if (i == 'value' && attr == null) attr = '';
-		    if (attr && attr.match && attr.match(/"/)) {
-			var re = /"/g;
-			attr = attr.replace(re, "'");
-		    }
 		    attributes += ' ' + i + '="' + attr + '"';
 		}
 	    }

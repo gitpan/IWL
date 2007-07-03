@@ -7,6 +7,7 @@ use strict;
 
 use base 'IWL::Container';
 
+use IWL::List;
 use IWL::Label;
 use IWL::Notebook::Tab;
 use IWL::String qw(randomize);
@@ -28,6 +29,16 @@ The notebook widget provided a way to group content in tabs
 IWL::Notebook->new ([B<%ARGS>])
 
 Where B<%ARGS> is an optional hash parameter with with key-values.
+
+=head1 SIGNALS
+
+=over 4
+
+=item B<current_tab_change>
+
+Fires when the current tab of the notebook has changed
+
+=back
 
 =cut
 
@@ -95,12 +106,16 @@ sub setId {
 # Protected
 #
 sub _realize {
-    my $self        = shift;
-    my $script      = IWL::Script->new;
-    my $id          = $self->getId;
+    my $self     = shift;
+    my $script   = IWL::Script->new;
+    my $id       = $self->getId;
+    my $selected = 0;
 
     $self->SUPER::_realize;
-    $self->{__tabs}[0]->setSelected(1) if $self->{__current} == -1;
+    foreach my $tab (@{$self->{__tabs}}) {
+        last if $selected = $tab->isSelected;
+    }
+    $self->{__tabs}[0]->setSelected(1) if !$selected;
     $script->setScript("Notebook.create('$id');");
     $self->_appendAfter($script);
 }
@@ -158,7 +173,6 @@ sub __init {
     $self->_constructorArguments(%args);
     $self->requiredJs('base.js', 'notebook.js');
     $self->{_customSignals} = {current_tab_change => []};
-    $self->{__current} = -1;
 
     return $self;
 }
@@ -175,11 +189,7 @@ sub __setup_page {
 	$index = push @{$self->{__tabs}}, $tab;
     }
 
-    $index--;
-    if ($selected && $object) {
-	$self->{__current} = $index;
-	$tab->setSelected($selected);
-    }
+    $tab->setSelected($selected) if $object;
     $tab->setTitle($text);
 
     if ($reverse) {

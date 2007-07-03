@@ -30,6 +30,24 @@ IWL::Menu::Item->new ([B<%ARGS>])
 Where B<%ARGS> is an optional hash parameter with with key-values.
   - parentType - 'menu' (default) or 'menubar'
 
+=head1 SIGNALS
+
+=over 4
+
+=item B<select>
+
+Fires when the item is selected
+
+=item B<unselect>
+
+Fires when the item is unselected
+
+=item B<change>
+
+Fires when the item's state has been changed. Only menu radio and check menu items fire this signal
+
+=back
+
 =cut
 
 sub new {
@@ -62,6 +80,16 @@ sub setText {
     $self->{__label}->setText($text);
 
     return $self;
+}
+
+=item B<getText>
+
+Returns the menu item text
+
+=cut
+
+sub getText {
+    return shift->{__label}->getText;
 }
 
 =item B<setIcon> (B<ICON>)
@@ -97,11 +125,23 @@ B<GROUP> - optional, the group of the radio item, if that type is used
 sub setType {
     my ($self, $type, $group) = @_;
 
+    return unless $type =~ /^(?:none|radio|check)$/;
+
     $self->{__type} = $type;
     if ($type eq 'radio') {
         $self->setName($group);
     }
     return $self;
+}
+
+=item B<getType>
+
+Returns the menu item type
+
+=cut
+
+sub getType {
+    return shift->{__type};
 }
 
 =item B<setSubmenu> (B<SUBMENU>)
@@ -115,11 +155,24 @@ Parameters: B<SUBMENU> - an IWL::Menu
 sub setSubmenu {
     my ($self, $submenu) = @_;
 
+    return if $self->{__submenu};
+
     $self->appendChild($submenu);
     unless ($self->{__parentType} eq 'menubar') {
         $submenu->appendClass('submenu');
-        $self->{__label}->appendClass('menu_label_parent');
+        $self->{__label}->appendClass('menu_item_label_parent');
     }
+    return $self->{__submenu} = $submenu;
+}
+
+=item B<getSubmenu>
+
+Returns the menu item's submenu
+
+=cut
+
+sub getSubmenu {
+    return shift->{__submenu};
 }
 
 =item B<toggle> (B<BOOL>)
@@ -156,6 +209,25 @@ sub setDisabled {
     return $self;
 }
 
+=item B<isDisabled>
+
+Returns true if the menu item is disabled
+
+=cut
+
+sub isDisabled {
+    return shift->hasClass('menu_item_disabled');
+}
+
+# Overrides
+#
+sub setId {
+    my ($self, $id) = @_;
+
+    $self->{__label}->setId($id . '_label');
+    return $self->SUPER::setId($id);
+}
+
 # Protected
 #
 sub _realize {
@@ -189,11 +261,7 @@ sub __init {
 
     $self->{__type} = 'none';
     $self->{__parentType} = $parentType;
-    if ($parentType eq 'menubar') {
-        $label->setClass('menubar_label');
-    } else {
-        $label->setClass('menu_label');
-    }
+    $label->{_defaultClass} = $parentType eq 'menubar' ? 'menubar_item_label' : 'menu_item_label';
     $self->{_customSignals} = {change => [], select => [], unselect => []};
 }
 
