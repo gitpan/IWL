@@ -16,7 +16,7 @@ IWL::Widget - the base widget object
 
 =head1 INHERITANCE
 
-IWL::Object -> IWL::Widget
+L<IWL::Object> -> L<IWL::Widget>
 
 =head1 DESCRIPTION
 
@@ -26,7 +26,7 @@ The Widget package provides basic methods that every widget inherits.
 
 IWL::Widget->new ([B<%ARGS>])
 
-Where B<%ARGS> is an optional hash parameter with with key-value options. 
+Where B<%ARGS> is an optional hash parameter with with key-value options.
 
 IWL::Widget->newMultiple (B<ARGS>, B<ARGS>, ...)
 
@@ -138,10 +138,18 @@ sub newMultiple {
 	    push @widgets, $widget;
 	}
     } else {
-	foreach my $args (@args) {
-	    my $widget = $proto->new(%$args);
-	    push @widgets, $widget;
-	}
+        if ($args[0] =~ /^\d+$/) {
+            my $number = shift @args;
+            foreach (1 .. $number) {
+                my $widget = $proto->new(@args);
+                push @widgets, $widget;
+            }
+        } else {
+            foreach my $args (@args) {
+                my $widget = $proto->new(%$args);
+                push @widgets, $widget;
+            }
+        }
     }
     return @widgets;
 }
@@ -150,14 +158,14 @@ sub newMultiple {
 
 =over 4
 
-=item B<signalConnect> (B<SIGNAL>, B<JS_CALLBACK>)
+=item B<signalConnect> (B<SIGNAL>, B<EXPR>)
 
-signalConnect registers a javascript callback to be called on each emission of the B<SIGNAL> from the widget.
+Registers a javascript expression to be evaluated on each emission of the B<SIGNAL> from the widget.
 
-Parameters: B<SIGNAL> - the signal string, B<JS_CALLBACK> - the javascript expression to be invoked
+Parameters: B<SIGNAL> - the signal string, B<EXPR> - the javascript expression to be invoked
 
 Returns: returns false if the signal is invalid
-  
+
 =cut
 
 sub signalConnect {
@@ -185,11 +193,11 @@ sub signalConnect {
     return $self;
 }
 
-=item B<signalDisconnect> (B<SIGNAL>, B<JS_CALLBACK>)
+=item B<signalDisconnect> (B<SIGNAL>, B<EXPR>)
 
-Disconnects the callback from the signal handler
+Disconnects the expression from the signal handler
 
-Parameters: B<SIGNAL> - the signal, B<JS_CALLBACK> - the callback to be disconnected
+Parameters: B<SIGNAL> - the signal, B<EXPR> - the javascript expression to be disconnected
 
 =cut
 
@@ -217,7 +225,7 @@ sub signalDisconnect {
 
 =item B<signalDisconnectAll> (B<SIGNAL>)
 
-Disconnects all the callbacks from the signal handler
+Disconnects all of the expressions from the signal handler
 
 Parameters: B<SIGNAL> - the signal
 
@@ -527,59 +535,15 @@ sub _constructorArguments {
     }
 }
 
-=item B<registerEvent> (B<EVENT>, B<URL>, B<PARAMS>)
-
-Registers a generic event handler to the given event. The event will be processed by a IWL::RPC::handleEvent(3pm) call in the handling script.
-
-Parameters: B<EVENT> - The event name to register. B<URL> the script url, which will provide the event handling. B<PARAMS> - a hash of parameters to be passed to the handler subroutine as a parameter. The following parameters are also interpretted:
-
-  onStart     - a javascript expression to be evaluated before the
-                request takes place. It receives I<PARAMS> as an
-		argument
-  onComplete  - a javascript expression to be evaluated after the
-                request takes place
-  update      - the id of element to be updated. If empty, the
-                document body is updated. The following parameters
-		are also taken under consideration if this one is
-		specified:
-  evalScripts - true, if any script elements in the response should
-                be evaluated using javascript's eval() function
-  insertion   - if omitted, the contents of the container will be
-                replaced with the response of the script. Otherwise,
-		depeding on the value, the reponse will be placed
-		around the exsting content. Valid values are:
-		I<after> - will be inserted as the next sibling of
-		           the container, 
-		I<before> - will be inserted as the previous
-		            sibling of the container,
-		I<bottom> - will be inserted as the last child
-		            of the container,
-		I<top> - will be inserted as the first child of
-		            the container
-
-=cut 
-
 sub _registerEvent {
-    my ($self, $event, $params) = @_;
+    my ($self, $event, $params, $options) = @_;
 
-    my $handlers = {};
     my ($package, $signal) = $event =~ /^(.*)-(\w+)$/;
     $package =~ s/-/::/g;
     return unless ref $self eq $package;
 
-    if (exists $params->{update}) {
-	$handlers->{update} = $params->{update} || 'document.body';
-	$handlers->{insertion} = {
-	    after  => 'Insertion.After',
-	    before => 'Insertion.Before',
-	    bottom => 'Insertion.Bottom',
-	    top    => 'Insertion.Top',
-	}->{$params->{insertion}} if $params->{insertion};
-	$handlers->{evalScripts} = 'true' if $params->{evalScripts};
-    }
-
-    $self->signalConnect($signal => "this.emitEvent('$event', {value: this.value})");
-    return $handlers;
+    $self->signalConnect($signal => "this.emitEvent('$event', {}, {id: this.id})");
+    return $options;
 }
 
 # Internal

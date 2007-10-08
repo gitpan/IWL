@@ -1,10 +1,11 @@
-Event.signalConnect(window, 'domready', demo_init);
+document.observe('contentloaded', demo_init);
 
 function demo_init () {
     displayStatus('To display a widget demo, double click its row');
 }
 
 function activate_widgets_response(json) {
+    if (!json) return;
     enableView();
     if (!json.data) return;
     var content = $('content');
@@ -15,7 +16,8 @@ function activate_widgets_response(json) {
 }
 
 function contentbox_chooser_change(chooser) {
-    $('contentbox').setType(chooser.value);
+    var outline = $('contentbox_outline_check').checked;
+    $('contentbox').setType(chooser.value, {outline: outline});
 }
 
 function sortTheMoney(col_index) {

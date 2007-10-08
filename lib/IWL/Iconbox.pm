@@ -20,7 +20,7 @@ IWL::Iconbox - an iconbox widget
 
 =head1 INHERITANCE
 
-IWL::Object -> IWL::Widget -> IWL::Container -> IWL::Iconbox
+L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::Iconbox>
 
 =head1 DESCRIPTION
 
@@ -31,9 +31,22 @@ The iconbox widget provides a container that holds icons.
 IWL::Iconbox->new ([B<%ARGS>])
 
 Where B<%ARGS> is an optional hash parameter with with key-value options. These include:
-  width: width of the iconbox without the borders
-  height: height of the iconbox without the borders
-  multipleSelect: true if the iconbox should be able to select multiple icons
+
+=over 4
+
+=item B<width>
+
+Width of the iconbox without the borders
+
+=item B<height>
+
+Height of the iconbox without the borders
+
+=item B<multipleSelect>
+
+True if the iconbox should be able to select multiple icons
+
+=back
 
 =head1 SIGNALS
 
@@ -82,7 +95,7 @@ Parameters: B<ICON> - the IWL::Iconbox::Icon object to be appended
 sub appendIcon {
     my ($self, $icon) = @_;
     $self->{__iconCon}->appendChild($icon);
-    weaken($icon->{_iconbox} = $self);
+    $icon->{_iconbox} = $self and weaken $icon->{_iconbox};
     push @{$self->{__icons}}, $icon;
     return $icon;
 }
@@ -98,7 +111,7 @@ Parameters: B<ICON> - the IWL::Iconbox::Icon object to be prepended
 sub prependIcon {
     my ($self, $icon) = @_;
     $self->{__iconCon}->prependChild($icon);
-    weaken($icon->{_iconbox} = $self);
+    $icon->{_iconbox} = $self and weaken $icon->{_iconbox};;
     unshift @{$self->{__icons}}, $icon;
     return $icon;
 }
@@ -151,30 +164,28 @@ sub _setupDefaultClass {
 }
 
 sub _registerEvent {
-    my ($self, $event, $params) = @_;
+    my ($self, $event, $params, $options) = @_;
 
-    my $handlers = {};
     if ($event eq 'IWL-Iconbox-refresh') {
-	$handlers->{method} = '_refreshResponse';
-        $handlers->{append} = $params->{append} ? 'true' : 'false';
+	$options->{method} = '_refreshResponse';
     } else {
-	$self->SUPER::_registerEvent($event, $params);
+	return $self->SUPER::_registerEvent($event, $params, $options);
     }
 
-    return $handlers;
+    return $options;
 }
 
 sub _refreshEvent {
-    my ($params, $handler) = @_;
+    my ($event, $handler) = @_;
 
     IWL::Object::printJSONHeader;
-    my ($list, $user_extras) = $handler->($params->{userData})
+    my ($list, $extras) = $handler->($event->{params})
         if 'CODE' eq ref $handler;
     $list = [] unless ref $list eq 'ARRAY';
 
     print '{icons: ['
            . join(',', map {'"' . escape($_->getContent) . '"'} @$list)
-           . '], userExtras: ' . (objToJson($user_extras) || 'null'). '}';
+           . '], extras: ' . (objToJson($extras) || 'null'). '}';
 }
 
 # Internal

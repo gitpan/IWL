@@ -22,7 +22,7 @@ IWL::Button - a button with a background
 
 =head1 INHERITANCE
 
-IWL::Object -> IWL::Widget -> IWL::Button
+L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Button>
 
 =head1 DESCRIPTION
 
@@ -33,19 +33,30 @@ The Button widget is different from a regular Button widget, in that it can be s
 IWL::Button->new ([B<%ARGS>])
 
 Where B<%ARGS> is an optional hash parameter with with key-values.
-  image: set the image of the button
-  alt: set the alt text for the image of the button
-  label: set the label of the button
-  size: default - 26px in height, 
-        medium - 20px in height,
-	small - 13px in height,
+
+=over 4
+
+=item I<image>
+
+Set the image of the button
+
+=item B<alt>
+
+Set the alt text for the image of the button
+
+=item B<label>
+
+Set the label of the button
+
+=item B<size>
+
+default - 26px in height, medium - 20px in height, small - 13px in height,
+
+=back
 
 IWL::Button->newFromStock (B<STOCK_ID>, [B<%ARGS>])
 
 Where B<STOCK_ID> is the B<IWL::Stock> id.
-  size: default - 26px in height, 
-        medium - 20px in height,
-	small - 13px in height,
 
 =head1 SIGNALS
 
@@ -100,7 +111,7 @@ sub setLabel {
 
 =item B<getLabel>
 
-Gets the text of the button label
+Returns the text of the button label
 
 =cut
 
@@ -212,6 +223,31 @@ sub setHref {
     }
     $self->signalConnect(mouseover => "window.status = unescape('" . escape($url) . "')");
     return $self->signalConnect(mouseout => "window.status = ''");
+}
+
+=item B<setDisabled> (B<BOOL>)
+
+Sets whether the button will be disabled
+
+Parameters: B<BOOL> - true if the button should be disabled (i.e. will not react to user input)
+
+=cut
+
+sub setDisabled {
+    my ($self, $bool) = @_;
+
+    $self->{_options}{disabled} = !(!$bool) ? 'true' : 'false';
+    return $self;
+}
+
+=item B<isDisabled>
+
+Returns true if the button is disabled
+
+=cut
+
+sub isDisabled {
+    return shift->{_options}{disabled} eq 'true' ? 1 : '';
 }
 
 # Overrides
@@ -420,6 +456,7 @@ sub __init {
     $self->setId($id);
 
     $self->{_options}{size} = $args{size} || 'default';
+    $self->{_options}{disabled} = !(!$args{disabled}) ? 'true' : 'false';
     $self->{_options}{submit} = 0;
 
     delete @args{qw(size id)};

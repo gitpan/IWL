@@ -1,4 +1,4 @@
-IWL version 0.47
+IWL version 0.50
 ================
 
 The IWL includes several widgets with which consistent web pages can be built
@@ -43,5 +43,4 @@ modify it under the same terms as Perl itself. See perldoc perlartistic.
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-
 

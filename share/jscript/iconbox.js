@@ -143,7 +143,7 @@ Object.extend(Object.extend(Iconbox, Widget), {
 	    if (!icon_data) continue;
             var icon = null;
 	    if (typeof icon_data === 'string') {
-		new Insertion.Bottom(this.iconsContainer, unescape(icon_data));
+                this.iconsContainer.insert(unescape(icon_data));
 		icon = this.iconsContainer.childElements().last();
 		if (!icon.id)
 		    icon.id = 'iconbox_icon_' + Math.random();
@@ -192,10 +192,7 @@ Object.extend(Object.extend(Iconbox, Widget), {
 
 	Event.observe(window, 'resize', 
 		this._resizeEvent.bindAsEventListener(this));
-	Event.observe(this, 'mouseover', function() {
-	    focused_widget = this.id}.bind(this));
-	Event.observe(this, 'click', function() {
-	    focused_widget = this.id}.bind(this));
+        registerFocus(this);
 	keyLogEvent(this.__keyEventsCB.bindAsEventListener(this));
     },
     _resizeEvent: function(event) {
@@ -273,7 +270,7 @@ Object.extend(Object.extend(Iconbox, Widget), {
         }
         return height;
     },
-    _refreshResponse: function(json, params) {
+    _refreshResponse: function(json, params, options) {
 	if (!json.icons.length) return;
 	if (this.currentIcon) this.currentIcon.setSelected(false);
 	this.iconsContainer.update();
@@ -291,7 +288,7 @@ Object.extend(Object.extend(Iconbox, Widget), {
     },
 
     __keyEventsCB: function(event) {
-	var keyCode = getKeyCode(event);
+	var keyCode = Event.getKeyCode(event);
 	var shift = event.shiftKey;
 	var icon;
 	if (focused_widget != this.id)
@@ -376,7 +373,7 @@ Object.extend(Object.extend(Icon, Widget), {
 	return this.label.getText();
     },
     /**
-     * Activated the icon
+     * Activates the icon
      * @returns The object
      * */
     activate: function() {

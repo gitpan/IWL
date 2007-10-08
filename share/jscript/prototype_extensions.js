@@ -4,7 +4,7 @@ Object.extend(Prototype.Browser, {
   IE7: !!(Prototype.Browser.IE && window.XMLHttpRequest)
 });
 
-Object.extend(Event, {
+var EventMethods = {
   // Checks if the element is in the current event stack
   checkElement: function(event, element) {
     element = $(element);
@@ -18,248 +18,229 @@ Object.extend(Event, {
     } catch (e) {return false;}
     return false;
   },
+  getKeyCode: function(event) {
+    return event.keyCode ? event.keyCode : event.which ? event.which : 0;
+  }
+};
+Object.extend(Event.Methods, EventMethods);
+Event.extend();
+Object.extend(Event, EventMethods);
 
-  /* IWL RPC ======================================= */
-  registerEvent: function(element, eventName, url, params) {
-    if (!(element = $(element))) return;
-    if (!('handlers' in element)) element['handlers'] = {};
-    if (element['handlers'][eventName]) return;
-    element['handlers'][eventName] = function() {
-      var previousRequest = element['handlers'][eventName].ajaxRequest;
-      if (previousRequest && previousRequest.transport) {
-	previousRequest.transport.abort();
-	element['handlers'][eventName].ajaxRequest = null;
-      }
-      if (!('userData' in params))  params.userData = {};
-      if (arguments[0] && arguments[0].userData) {
-	Object.extend(params.userData, arguments[0].userData);
-	delete arguments[0].userData;
-      }
-      Object.extend(params, arguments[0]);
-      if (params.emitOnce) {
-        if (this[eventName]._emitted) return;
-        this[eventName]._emitted = true;
+Object.extend(Event, (function() {
+  Event.DOMEvents.push((Prototype.Browser.Gecko) ? 'DOMMouseScroll' : 'mousewheel');
+  return {
+    KEY_SPACE: 32,
+    signalConnect: function(element, name, observer) {
+      if (!element || !name || !observer) return;
+      if (!element.signals) element.signals = {};
+      if (!element.signals[name])
+        element.signals[name] = {observers: [], callbacks: []};
+      if (element.signals[name].observers.indexOf(observer) > -1) return Event;
+
+      var custom = Event.custom[name];
+      if (custom) {
+        var real = custom.real;
+        var callback = custom.callback ? custom.callback.bindAsEventListener(Event, element) : null;
+        if (custom.connect) custom.connect.call(Event, element, observer);
       }
 
-      if (params.userData.onStart)
-	eventStart(params.userData.onStart).call(element, params.userData);
-
-      var cgiParams = {};
-      Object.extend(cgiParams, params).userData = {};
-      Object.extend(cgiParams.userData, params.userData);
-      ['onComplete', 'onStart'].each(function(n) {
-              delete cgiParams.userData[n];
-      });
-      if (typeof params.update === 'undefined') {
-	element['handlers'][eventName].ajaxRequest = new Ajax.Request(url, {
-	  onException: exceptionHandler,
-	  onComplete: function(or) {
-	    var json = (or.responseText || '{}').evalJSON();
-	    if (params.method && params.method in element) 
-	      element[params.method].call(element, json, params);
-	    if (params.onComplete && typeof params.onComplete === 'function') 
-	      params.onComplete.call(element, json, params);
-	    if (params.userData.onComplete) {
-	      var callback = eventCompletion(params.userData.onComplete);
-	      callback.call(element, json, params.userData);
-	    }
-	    element['handlers'][eventName].ajaxRequest = null;
-	  },
-          parameters: {IWLEvent: Object.toJSON({eventName: eventName, params: cgiParams})}
-	});
-      } else {
-	var onComplete = params.userData.onComplete ? function(or) {
-	  if (params.onComplete && typeof params.onComplete === 'function') 
-	    params.onComplete.call(element, {}, params);
-	  var callback = eventCompletion(params.userData.onComplete);
-	  callback.call(element, {}, params.userData);
-	  element['handlers'][eventName].ajaxRequest = null;
-	} : function() {
-	  if (params.onComplete && typeof params.onComplete === 'function') 
-	    params.onComplete.call(element, {}, params);
-	  element['handlers'][eventName].ajaxRequest = null
-	};
-	element['handlers'][eventName].ajaxRequest = new Ajax.Updater(params.update, url, {
-	  onException: exceptionHandler,
-	  onComplete: onComplete,
-	  insertion: eval(params.insertion || false),
-	  evalScripts: params.evalScripts || false,
-          parameters: {IWLEvent: Object.toJSON({eventName: eventName, params: cgiParams})}
-	});
-      }
-    }
-    return Event;
-  },
-  prepareEvents: function(element) {
-    if (!(element = $(element))) return;
-    if (element.preparedEvents) return element;
-    var events = element.readAttribute('iwl:RPCEvents');
-    if (events) {
-      events = unescape(events).evalJSON();
-      for (var name in events)
-	Event.registerEvent(element, name, events[name][0], events[name][1]);
-      element.preparedEvents = true;
+      element.signals[name].observers.push(observer);
+      element.signals[name].callbacks.push(callback || observer);
+      if ((real || name) != 'activate')
+        Event.observe.call(Event, element, real || name, callback || observer);
       return Event;
-    }
-  },
-  emitEvent: function(element, eventName, params) {
-    if (!(element = $(element))) return;
-    if (!('handlers' in element) || !(eventName in element['handlers'])) return;
-    element['handlers'][eventName](params);
-    return Event;
-  },
-  /* ================================================ */
-          
-  signalConnect: function(element, name, observer) {
-    if (!element || !name || !observer) return;
-    if (!element.signals) element.signals = {};
-    if (!element.signals[name])
+    },
+    signalDisconnect: function(element, name, observer) {
+      if (!element || !element.signals || !element.signals[name]) return;
+      var index = element.signals[name].observers.indexOf(observer);
+      if (index == -1) return;
+
+      var custom = Event.custom[name];
+      if (custom && custom.real)
+        var real = custom.real;
+
+      element.signals[name].observers.splice(index, 1);
+      var callback = element.signals[name].callbacks.splice(index, 1)[0];
+      Event.stopObserving.call(Event, element, real || name, callback);
+      return Event;
+    },
+    signalDisconnectAll: function(element, name) {
+      if (!element || !element.signals || !element.signals[name]) return;
+      var custom = Event.custom[name];
+      if (custom)
+        var real = custom.real;
+
+      for (var i = 0, length = element.signals[name].observers.length; i < length; i++) {
+        Event.stopObserving.call(this, element, real || name, element.signals[name].callbacks[i]);
+      }
       element.signals[name] = {observers: [], callbacks: []};
-    if (element.signals[name].observers.indexOf(observer) > -1) return Event;
-
-    var custom = Event.custom[name];
-    if (custom) {
-      var real = custom.real;
-      var callback = custom.callback ? custom.callback.bindAsEventListener(Event, element) : null;
-      if (custom.connect) custom.connect.call(Event, element, observer);
-    }
-
-    element.signals[name].observers.push(observer);
-    element.signals[name].callbacks.push(callback || observer);
-    if ((real || name) != 'activate')
-      Event.observe.call(Event, element, real || name, callback || observer);
-    return Event;
-  },
-  signalDisconnect: function(element, name, observer) {
-    if (!element || !element.signals || !element.signals[name]) return;
-    var index = element.signals[name].observers.indexOf(observer);
-    if (index == -1) return;
-
-    var custom = Event.custom[name];
-    if (custom && custom.real)
-      var real = custom.real;
-
-    element.signals[name].observers.splice(index, 1);
-    var callback = element.signals[name].callbacks.splice(index, 1)[0];
-    Event.stopObserving.call(Event, element, real || name, callback);
-    return Event;
-  },
-  signalDisconnectAll: function(element, name) {
-    if (!element || !element.signals || !element.signals[name]) return;
-    var custom = Event.custom[name];
-    if (custom)
-      var real = custom.real;
-
-    for (var i = 0, length = element.signals[name].observers.length; i < length; i++) {
-      Event.stopObserving.call(this, element, real || name, element.signals[name].callbacks[i]);
-    }
-    element.signals[name] = {observers: [], callbacks: []};
-    return Event;
-  },
-  emitSignal: function(element, name) {
-    var args = $A(arguments);
-    var element = args.shift();
-    var name = args.shift();
-    if (!element || !element.signals || !element.signals[name]) return;
-    element.signals[name].observers.each(function ($_) {
-      if (args)
-	$_.apply(element, args);
-      else
-	$_.call(element);
-    });
-    return Event;
-  },
-  relatedElement: function(event) {
-    if (event.type == 'mouseover')
-      return $(event.relatedTarget || event.fromElement);
-    else if (event.type == 'mouseout')
-      return $(event.relatedTarget || event.toElement);
-  },
-
-  // This is more or less copied from mootools, changed to use prototype's functions, and with a few additions
-  custom: {
-    mouseenter: {
-      real: 'mouseover',
-      callback: function(event, element) {
-	var target = Event.relatedElement(event);
-	if (target == element || Element.descendantOf(target, element)) return;
-	Event.emitSignal(element, 'mouseenter', event);
-      }
+      return Event;
     },
-    mouseleave: {
-      real: 'mouseout',
-      callback: function(event, element) {
-	var target = Event.relatedElement(event);
-	if (target == element || Element.descendantOf(target, element)) return;
-	Event.emitSignal(element, 'mouseleave', event);
-      }
+    emitSignal: function(element, name) {
+      var args = $A(arguments);
+      var element = args.shift();
+      var name = args.shift();
+      if (!element || !element.signals || !element.signals[name]) return;
+      element.signals[name].observers.each(function ($_) {
+        if (args)
+          $_.apply(element, args);
+        else
+          $_.call(element);
+      });
+      return Event;
     },
-    mousewheel: {
-      real: (Prototype.Browser.Gecko) ? 'DOMMouseScroll' : 'mousewheel',
-      callback: function(event, element) {
-	if (event.detail)
-	  event.scrollDirection = event.detail;
-	else if (event.wheelDelta)
-	  event.scrollDirection = event.wheelDelta / -40;
-	Event.emitSignal(element, 'mousewheel', event);
-      }
-    },
-    domready: {
-      connect: function(element, observer) {
-	if (window.loaded) {
-	  observer.call(element);
-	}
-	if (document.readyState && (Prototype.Browser.WebKit || Prototype.Browser.KHTML)) {
-	  window.domreadytimer = setInterval(function() {
-	    if (['loaded', 'complete'].include(document.readyState))
-	      Event.custom.domready._callback(element);
-	  }, 50);
-	} else if (document.readyState && Prototype.Browser.IE) {
-	  if (!$('iedomready')) {
-	    var src = (window.location.protocol == 'https:') ? '://0' : 'javascript:void(0)';
-	    document.write('<script id="iedomready" defer src="' + src + '"></script>');
-	    $('iedomready').onreadystatechange = function() {
-	      if (this.readyState == 'complete') Event.custom.domready._callback(element);
-	    };
-	  }
-	} else {
-	  Event.observe(window, 'load', Event.custom.domready._callback.bind(Event, element));
-	  Event.observe(document, 'DOMContentLoaded', Event.custom.domready._callback.bind(Event, element));
-	}
+
+    // This is more or less copied from mootools, changed to use prototype's functions, and with a few additions
+    custom: {
+      mouseenter: {
+        real: 'mouseover',
+        callback: function(event, element) {
+          var target = event.relatedTarget || Event.relatedTarget(event);
+          if (!target || target == element || Element.descendantOf(target, element)) return;
+          Event.emitSignal(element, 'mouseenter', event);
+        }
       },
-      _callback: function(element) {
-	if (window.loaded) return;
-	window.loaded = true;
-	clearInterval(window.domreadytimer);
-	window.domreadytimer = null;
-	Event.emitSignal(element, 'domready');
+      mouseleave: {
+        real: 'mouseout',
+        callback: function(event, element) {
+          var target = event.relatedTarget || Event.relatedTarget(event);
+          if (!target || target == element || Element.descendantOf(target, element)) return;
+          Event.emitSignal(element, 'mouseleave', event);
+        }
+      },
+      mousewheel: {
+        real: (Prototype.Browser.Gecko) ? 'DOMMouseScroll' : 'mousewheel',
+        callback: function(event, element) {
+          if (event.detail)
+            event.scrollDirection = event.detail;
+          else if (event.wheelDelta)
+            event.scrollDirection = event.wheelDelta / -40;
+          Event.emitSignal(element, 'mousewheel', event);
+        }
       }
     }
-  }
-});
+  };
+})());
 
-Object.extend(Position, {
-  scrollOffset: function(element) {
-    var valueT = 0, valueL = 0;
-    do {
-      if (element.tagName == 'HTML')
-	break;
-      valueT += element.scrollTop  || 0;
-      valueL += element.scrollLeft || 0;
-      element = element.parentNode;
-    } while (element);
-    return [valueL, valueT];
+if (!window.IWLRPC) var IWLRPC = {};
+Object.extend(IWLRPC, (function() {
+  function eventStart(str) {
+      return function(params) {
+          eval(str);
+      }
   }
-});
+
+  function eventCompletion(str) {
+      return function(json, params, options) {
+          eval(str);
+      }
+  }
+
+  function eventFinalize (element, eventName, options) {
+    if (options.disableView)
+      enableView();
+    element['handlers'][eventName].ajaxRequest = null
+    if (options.emitOnce)
+      delete element['handlers'][eventName];
+  }
+
+  return {
+    registerEvent: function(element, eventName, url, params, options) {
+      if (!(element = $(element))) return;
+      if (!('handlers' in element)) element['handlers'] = {};
+      if (element['handlers'][eventName]) return;
+
+      element['handlers'][eventName] = function() {
+        var previousRequest = element['handlers'][eventName].ajaxRequest;
+        if (previousRequest && previousRequest.transport) {
+          previousRequest.transport.abort();
+          element['handlers'][eventName].ajaxRequest = null;
+        }
+
+        params = Object.extend(params || {}, arguments[0]);
+        options = Object.extend(options || {}, arguments[1]);
+        if (options.onStart)
+          eventStart(options.onStart).call(element, params);
+        var disable = options.disableView ? disableView.bind(element, options.disableView) : Prototype.emptyFunction;
+
+        if ('update' in options) {
+          var updatee = $(options.update) || document.body;
+          options.evalScripts = !!options.evalScripts;
+        }
+        if (options.collectData) {
+            options.elementData = element.getControlElementParams();
+        }
+
+        if (typeof options.update === 'undefined') {
+          element['handlers'][eventName].ajaxRequest = new Ajax.Request(url, {
+            onException: exceptionHandler,
+            onLoading: disable,
+            onComplete: function(or) {
+              var json = or.responseJSON;
+              if (!json) return;
+              if (options.method && options.method in element) 
+                element[options.method].call(element, json, params, options);
+              if (options.responseCallback && typeof options.responseCallback === 'function') 
+                options.responseCallback.call(element, json, params, options);
+              if (options.onComplete) {
+                var callback = eventCompletion(options.onComplete);
+                callback.call(element, json, params, options);
+              }
+              eventFinalize(element, eventName, options);
+            },
+            parameters: {IWLEvent: Object.toJSON({eventName: eventName, params: params, options: options})}
+          });
+        } else {
+          var onComplete = options.onComplete ? function(or) {
+            if (options.responseCallback && typeof options.responseCallback === 'function') 
+              options.responseCallback.call(element, {}, params, options);
+            var callback = eventCompletion(options.onComplete);
+            callback.call(element, {}, params, options);
+            eventFinalize(element, eventName, options);
+          } : function() {
+            if (options.responseCallback && typeof options.responseCallback === 'function') 
+              options.responseCallback.call(element, {}, params, options);
+            eventFinalize(element, eventName, options);
+          };
+          element['handlers'][eventName].ajaxRequest = new Ajax.Updater(updatee, url, {
+            onException: exceptionHandler,
+            onLoading: disable,
+            onComplete: onComplete,
+            insertion: options.insertion || false,
+            evalScripts: options.evalScripts || false,
+            parameters: {IWLEvent: Object.toJSON({eventName: eventName, params: params, options: options})}
+          });
+        }
+      }
+      return element;
+    },
+    prepareEvents: function(element) {
+      if (!(element = $(element))) return;
+      if (element.preparedEvents) return element;
+      var events = element.readAttribute('iwl:RPCEvents');
+      if (events) {
+        events = unescape(events).evalJSON();
+        for (var name in events)
+          IWLRPC.registerEvent(element, name, events[name][0], events[name][1], events[name][2]);
+        element.preparedEvents = true;
+        return element;
+      }
+    },
+    emitEvent: function(element, eventName, params, options) {
+      if (!(element = $(element))) return;
+      if (!('handlers' in element) || !(eventName in element['handlers'])) return;
+      element['handlers'][eventName](params, options);
+      return element;
+    },
+    hasEvent: function(element, eventName) {
+      if (!(element = $(element))) return false;
+      if (!('handlers' in element) || !(eventName in element['handlers'])) return false;
+      return element['handlers'][eventName];
+    }
+  };
+})());
 
 var ElementMethods = {
-  removeChildren: function(element) {
-    element = $(element);
-    while (element.firstChild) {
-      element.removeChild(element.firstChild);
-    }
-    return element;
-  },
   getText: function(element) {
     element = $(element);
     if (element.textContent)
@@ -270,7 +251,7 @@ var ElementMethods = {
   positionAtCenter: function(element, relative) {
     element = $(element);
     var dims = element.getDimensions();
-    var page_dim = pageDimensions();
+    var page_dim = document.viewport.getDimensions();
     if (!relative)
       element.style.position = "absolute";
     element.style.left = (page_dim.width - dims.width)/2 + 'px';
@@ -296,18 +277,68 @@ var ElementMethods = {
     } while (element);
     return element;
   },
+  getControlElementParams: function(element) {
+    if (!(element = $(element))) return;
+    var params = new Hash;
+    var sliders = element.getElementsBySelector('.slider');
+    var selects = element.getElementsBySelector('select');
+    var textareas = element.getElementsBySelector('textarea');
+    var inputs = element.getElementsBySelector('input');
+
+    var valid_name = function(e) {
+      return e.hasAttribute('name') ? e.readAttribute('name') : e.readAttribute('id');
+    };
+    var push_values = function(name, value) {
+      if (params.keys().include(name))
+	params[name] = [params[name], value].flatten();
+      else
+	params[name] = value;
+    };
+
+    sliders.each(function(s) {
+	push_values(valid_name(s), s.control.value);
+      });
+    selects.each(function(s) {
+	push_values(valid_name(s), s.value);
+      });
+    textareas.each(function(t) {
+	push_values(valid_name(t), t.value);
+      });
+    inputs.each(function(i) {
+	switch(i.type) {
+	case 'text':
+	case 'password':
+	case 'hidden':
+	  push_values(valid_name(i), i.value);
+	  break;
+	case 'checkbox':
+	case 'radio':
+	  if (i.checked)
+	    push_values(valid_name(i), i.value);
+	  break;
+	}
+      });
+
+    if (!params.keys().length && (element.value || element.hasAttribute('value')))
+      push_values(valid_name(element), element.value || element.readAttribute('value'));
+
+    return params;
+  },
   /* = IWL RPC ======================================*/
-  registerEvent: function(element, eventName, url, params) {
-    if (Event.registerEvent.apply(Event, arguments))
-      return $A(arguments).first();        
+  registerEvent: function(element, eventName, url, params, options) {
+    IWLRPC.registerEvent.apply(Event, arguments);
+    return $A(arguments).first();        
   },
   prepareEvents: function(element) {
-    if (Event.prepareEvents.apply(Event, arguments))
-      return $A(arguments).first();       
+    IWLRPC.prepareEvents.apply(Event, arguments);
+    return $A(arguments).first();       
   },
-  emitEvent: function(element, eventName, params) {
-    if (Event.emitEvent.apply(Event, arguments))
-      return $A(arguments).first();  
+  emitEvent: function(element, eventName, params, options) {
+    IWLRPC.emitEvent.apply(Event, arguments);
+    return $A(arguments).first();  
+  },
+  hasEvent: function(element, eventName) {
+    return IWLRPC.hasEvent.apply(Event, arguments);
   },
   /*==================================================*/
 
@@ -345,6 +376,18 @@ Object.extend(String.prototype, {
     var div = document.createElement('div');
     div.innerHTML = this.stripTags();
     return div.firstChild;
+  },
+  evalScripts: function() {
+    var head = document.getElementsByTagName('head')[0];
+    var matchAll = new RegExp(Prototype.ScriptFragment, 'img');
+    var source = new RegExp('<script[^>]*?src=["\'](.*?)["\'][^>]*?><\/script>', 'im');
+    var result = this.extractScripts().map(function(script) { return eval(script) });
+    result.push((this.match(matchAll) || []).map(function(scriptTag) {
+      var match = scriptTag.match(source);
+      if (match && match[1])
+        return head.appendChild(new Element('script', {src: match[1], type: 'text/javascript'}));
+    }));
+    return result;
   }
 });
 
@@ -360,6 +403,133 @@ function $(element) {
   return Element.extend(element);
 }
 
+Object.extend(Date.prototype, {
+  isLeapYear: function() {
+    var year = this.getFullYear();
+    return !!((year & 3) == 0 && (year % 100 || (year % 400 == 0 && year)));
+  },
+  incrementYear: function(amount) {
+    var ret = new Date(this.getTime());
+    ret.setFullYear(ret.getFullYear() + (amount || 1));
+    this.setTime(ret.getTime());
+    return this;
+  },
+  decrementYear: function(amount) {
+    var ret = new Date(this.getTime());
+    ret.setFullYear(ret.getFullYear() - (amount || 1));
+    this.setTime(ret.getTime());
+    return this;
+  },
+  incrementMonth: function(amount) {
+    var ret = new Date(this.getTime());
+    ret.setMonth(ret.getMonth() + (amount || 1));
+    this.setTime(ret.getTime());
+    return this;
+  },
+  decrementMonth: function(amount) {
+    var ret = new Date(this.getTime());
+    ret.setMonth(ret.getMonth() - (amount || 1));
+    this.setTime(ret.getTime());
+    return this;
+  },
+  incrementDate: function(amount) {
+    var ret = new Date(this.getTime());
+    ret.setDate(ret.getDate() + (amount || 1));
+    this.setTime(ret.getTime());
+    return this;
+  },
+  decrementDate: function(amount) {
+    var ret = new Date(this.getTime());
+    ret.setDate(ret.getDate() - (amount || 1));
+    this.setTime(ret.getTime());
+    return this;
+  },
+  incrementHours: function(amount) {
+    var ret = new Date(this.getTime());
+    ret.setHours(ret.getHours() + (amount || 1));
+    this.setTime(ret.getTime());
+    return this;
+  },
+  decrementHours: function(amount) {
+    var ret = new Date(this.getTime());
+    ret.setHours(ret.getHours() - (amount || 1));
+    this.setTime(ret.getTime());
+    return this;
+  },
+  incrementMinutes: function(amount) {
+    var ret = new Date(this.getTime());
+    ret.setMinutes(ret.getMinutes() + (amount || 1));
+    this.setTime(ret.getTime());
+    return this;
+  },
+  decrementMinutes: function(amount) {
+    var ret = new Date(this.getTime());
+    ret.setMinutes(ret.getMinutes() - (amount || 1));
+    this.setTime(ret.getTime());
+    return this;
+  },
+  incrementSeconds: function(amount) {
+    var ret = new Date(this.getTime());
+    ret.setSeconds(ret.getSeconds() + (amount || 1));
+    this.setTime(ret.getTime());
+    return this;
+  },
+  decrementSeconds: function(amount) {
+    var ret = new Date(this.getTime());
+    ret.setSeconds(ret.getSeconds() - (amount || 1));
+    this.setTime(ret.getTime());
+    return this;
+  },
+  incrementMiliseconds: function(amount) {
+    var ret = new Date(this.getTime());
+    ret.setMiliseconds(ret.getMiliseconds() + (amount || 1));
+    this.setTime(ret.getTime());
+    return this;
+  },
+  decrementMiliseconds: function(amount) {
+    var ret = new Date(this.getTime());
+    ret.setMiliseconds(ret.getMiliseconds() - (amount || 1));
+    this.setTime(ret.getTime());
+    return this;
+  },
+  getCentury: function() {
+    return Math.floor(this.getFullYear() / 100);
+  },
+  getWeek: function() {
+    var now = new Date(this.getTime());
+    var first = new Date(this.getFullYear(), 0, 1);
+    var compensation = first.getDay();
+
+    now.incrementDate();
+
+    if (compensation > 4) compensation -= 4;
+    else compensation += 3;
+
+    return Math.round((((now.getTime() - first.getTime()) / 86400000)
+        + compensation)/7);
+  },
+  getDayOfYear: function() {
+    var cumulative = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+    var ret = this.getDate() + cumulative[this.getMonth()];
+
+    return this.isLeapYear() && ret > 59 && this.getMonth() > 1 ? ++ret : ret;
+  },
+  getTimezoneName: function() {
+    var string = this.toString();
+    if (Prototype.Browser.Gecko) {
+      var zone_name = string.match(/\((\w+)\)$/);
+      if (zone_name && zone_name[1]) return zone_name[1];
+    } else if (Prototype.Browser.IE) {
+      var zone_name = string.split(/ /);
+      if (zone_name && zone_name[4]) return zone_name[4];
+    } else {
+      var offset = (this.getTimezoneOffset() / -60) * 100;
+      return "GMT+" + (offset < 1000 ? '0' + offset : offset);
+    }
+  }
+});
+
+/* Abort works correctly in 1.6
 // Overload this, for aborting the request
 Object.extend(Ajax.Request.prototype, {
   respondToReadyState: function(readyState) {
@@ -405,43 +575,4 @@ Object.extend(Ajax.Request.prototype, {
     }
   }
 });
-
-function pageDimensions() {
-    var width, height;
-
-    if ('innerWidth' in window && 'scrollMaxX' in window) {	// With scrolling
-	width = window.innerWidth + window.scrollMaxX;
-    } else if ('innerWidth' in document) {
-	width = document.innerWidth;
-    } else if ('scrollWidth' in document.documentElement) {	// With scrolling
-	width = document.documentElement.scrollWidth;
-    } else if ('clientWidth' in document.documentElement) {
-	width = document.documentElement.clientWidth;
-    } else if (document.body) {
-	width = document.body.clientWidth;
-    }
-    if ('innerHeight' in window && 'scrollMaxY' in window) {	// With scrolling
-	height = window.innerHeight + window.scrollMaxY;
-    } else if ('innerHeight' in document) {
-	height = document.innerHeight;
-    } else if ('scrollHeight' in document.documentElement) {	// With scrolling
-	height = document.documentElement.scrollHeight;
-    } else if ('clientHeight' in document.documentElement) {
-	height = document.documentElement.clientHeight;
-    } else if (document.body) {
-	height = document.body.clientHeight;
-    }
-    return {width: width, height: height};
-}
-
-function eventStart(str) {
-    return function(params) {
-	eval(str);
-    }
-}
-
-function eventCompletion(str) {
-    return function(json, params) {
-	eval(str);
-    }
-}
+*/

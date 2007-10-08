@@ -18,7 +18,7 @@ IWL::Notebook::Tab - a tab used in a notebook
 
 =head1 INHERITANCE
 
-IWL::Object -> IWL::Widget -> IWL::Notebook::Tab
+L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Notebook::Tab>
 
 =head1 DESCRIPTION
 
@@ -97,9 +97,9 @@ sub prependPage {
 
 =item B<setTitle> (B<TEXT>)
 
-Sets the title of the tab label
+Sets the text of the tab title 
 
-Parameters: B<TEXT> - the text of the tab label
+Parameters: B<TEXT> - the text of the tab title 
 
 =cut
 

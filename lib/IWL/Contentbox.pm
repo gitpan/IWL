@@ -31,7 +31,7 @@ IWL::Contentbox - a content box
 
 =head1 INHERITANCE
 
-IWL::Object -> IWL::Widget -> IWL::Container -> IWL::Contentbox
+L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::Contentbox>
 
 =head1 DESCRIPTION
 
@@ -41,12 +41,25 @@ The Contentbox is a box, which resembles a window, with a title, a header, a foo
 
 IWL::Contentbox->new ([B<%ARGS>])
 
-  autoWidth  - makes the content box as wide as the content, as long as
-               an id is set. Turns off resizing
-  shadows    - enable shadow classes
-  modal      - make the window a modal window
-  closeModalOnClick 
-             - makes the window close when the user clicks outside of it
+=over 4
+
+=item B<autoWidth>
+
+Makes the content box as wide as the content. Turns off resizing
+
+=item B<shadows>
+
+Enable shadow classes
+
+=item B<modal>
+
+Make the window a modal window
+
+=item B<closeModalOnClick>
+
+Makes the window close when the user clicks outside of it
+
+=back
 
 =head1 SIGNALS
 
@@ -218,26 +231,67 @@ sub appendFooterText {
     return $self;
 }
 
-=item B<setType> (B<TYPE>)
+=item B<setType> (B<TYPE>, B<OPTIONS>)
 
 Sets the type of the content box
 
-Parameters: B<TYPE> - the type of the content box
-  : none - default, no type
-  : drag - draggable
-  : resize - resizable
-  : dialog - draggable & resizable
-  : window - dialog + close button
-  : noresize - window without resizing
+Parameters:
+
+=over 8
+
+=item B<TYPE> - the type of the content box
+
+=over 12
+
+=item B<none>
+
+Default, no type
+
+=item B<drag>
+
+Draggable
+
+=item B<resize>
+
+Resizable
+
+=item B<dialog>
+
+Draggable & resizable
+
+=item B<window>
+
+Dialog + close button
+
+=item B<noresize>
+
+Window without resizing
+
+=back
+
+=item B<OPTIONS> - a hashref of options for use with the different types:
+
+=over 12
+
+=item B<outline>
+
+If true, an outline of the contentbox will apear when it is resized.
+
+=back
+
+=back
 
 =cut 
 
 sub setType {
-    my ($self, $type) = @_;
+    my ($self, $type, $options) = @_;
 
     return if !exists TYPE->{$type};
+    my $ref = ref $options;
+    $options = {} unless $ref && $ref == 'HASH';
 
     $self->{_options}{type} = $type;
+    $self->{_options}{typeOptions} = $options;
     return $self;
 }
 
@@ -449,14 +503,11 @@ sub __init {
 
     if ($args{autoWidth}) {
 	$self->{_options}{auto} = 'true';
-        delete $args{autoWidth};
     }
     if ($args{modal}) {
 	$self->{_options}{modal} = 'true';
-	delete $args{modal};
 	if ($args{closeModalOnClick}) {
 	    $self->{_options}{closeModalOnClick} = 'true';
-	    delete $args{closeModalOnClick};
 	}
     }
 
@@ -478,7 +529,7 @@ sub __init {
 
     $self->_appendAfter($self->{__init});
     $self->_constructorArguments(%args);
-    $self->requiredJs('base.js', 'dist/dragdrop.js', 'dist/resizer.js', 'contentbox.js');
+    $self->requiredJs('base.js', 'dist/dragdrop.js', 'resizer.js', 'contentbox.js');
     $self->{_customSignals} = {close => []};
 
     # Callbacks

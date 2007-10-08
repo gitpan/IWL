@@ -1,11 +1,5 @@
 // vim: set autoindent shiftwidth=4 tabstop=8:
-// ie4 - defined if browser is IE4+ compatible
-// ns6 - defined if browser is Netscape 6/Gecko compatible
 var focused_widget = null;
-var ie4 = document.all && !window.opera ? true : false;
-var ie7 = ie4 && window.XMLHttpRequest ? true : false;
-var opera = !!window.opera;
-var ns6 = document.getElementById && !document.all ? true : false;
 
 var loaded = false;
 Event.signalConnect(window, "load", function () {
@@ -24,8 +18,8 @@ var Widget = {};
 Widget = {
     create: function(id) {
 	this.current = $(id);
-	if (this._pre_init)
-	    if (!this._pre_init.apply(this, arguments)) return;
+	if (this._preInit)
+	    if (!this._preInit.apply(this, arguments)) return;
 	Object.extend(this.current, this);
   	if (this.current.prepareEvents)    
             this.current.prepareEvents();
@@ -73,7 +67,7 @@ function createHtmlElement(obj, paren, before_el) {
 	    setTimeout(tryEval.bind(this, obj.text), 200);
 	    return true;
 	}
-	if (ie4) {
+	if (Prototype.Browser.IE) {
 	    if (paren.tagName.toLowerCase() == 'script') {
 		paren.text = obj.text;
 		return true;
@@ -106,12 +100,12 @@ function createHtmlElement(obj, paren, before_el) {
 	    if (!obj.attributes.style) obj.attributes.style = {};
 	    obj.attributes.style.display = 'none';
 	}
-	if ((ie4 && !obj.attributes) || !ie4)
+	if ((Prototype.Browser.IE && !obj.attributes) || !Prototype.Browser.IE)
 	    element = $(document.createElement(obj.tag));
     }
     // setAttribute in Internet Explorer doesn't set style, class or any of the events. What the hell were they thinking?
     if (obj.attributes) {
-	if (ie4) {
+	if (Prototype.Browser.IE) {
 	    var attributes = '';
 	    for (var i in obj.attributes) {
 		var attr = obj.attributes[i];
@@ -199,6 +193,7 @@ var disabled_view_cnt = 0;
  * */
 function disableView() {
     var options = Object.extend({
+	fullCover: false,
 	noCover: false,
 	opacity: 0.8 
     }, arguments[0] || {});
@@ -208,15 +203,36 @@ function disableView() {
 	document.body.setStyle({cursor: 'wait'});
 	if (options.noCover) return;
 
-	var container = $(Builder.node('div', {id: "disabled_view",
-		    className: "disabled_view", style: 'visibility: hidden'}));
-	var rail = Builder.node('div', {"className": "disabled_view_rail"});
-	if (options.opacity < 1.0)
-	    container.setOpacity(options.opacity);
-	container.appendChild(rail);
-	document.body.appendChild(container);
-	container.positionAtCenter();
-	container.setStyle({visibility: 'visible'});
+	var rail = new Element('div', {id: "disabled_view_rail",
+		    className: "disabled_view_rail", style: 'visibility: hidden'});
+	if (options.fullCover) {
+	    var page_dims = document.viewport.getDimensions();
+	    var container = new Element('div', {id: "disabled_view",
+			className: "disabled_view", style: 'visibility: hidden'});
+
+	    container.addClassName('full_cover');
+	    container.setStyle({
+		height: page_dims.height + 'px',
+		width: page_dims.width + 'px'
+	    });
+	    if (options.opacity < 1.0)
+		container.setOpacity(options.opacity);
+	    document.body.appendChild(container);
+	    container.setStyle({visibility: 'visible'});
+	    Event.signalConnect(window, 'resize', function() {
+                var page_dims = document.viewport.getDimensions();
+		container.setStyle({
+		    height: page_dims.height + 'px',
+		    width: page_dims.width + 'px'
+		});
+	    }.bind(this));
+	} else {
+	    if (options.opacity < 1.0)
+		rail.setOpacity(options.opacity);
+	}
+	document.body.appendChild(rail);
+	rail.positionAtCenter();
+	rail.setStyle({visibility: 'visible'});
     }
 }
 
@@ -230,15 +246,13 @@ function enableView() {
 	document.body.setStyle({cursor: ''});
 	disabled_view_cnt = 0;
 
+	var rail = $('disabled_view_rail');
+	if (!rail) return;
+	rail.remove();
 	var container = $('disabled_view');
-	if (!container) return;
-	document.body.removeChild(container)
+	if (container)
+	    container.remove();
     }
-}
-
-function getKeyCode(event) {
-    return event.keyCode ? event.keyCode :
-	event.which ? event.which : event.charCode;
 }
 
 var display_status_cnt = 0;
@@ -250,15 +264,19 @@ var display_status_cnt = 0;
 function displayStatus(text) {
     if (display_status_cnt++) {
         var status_bar = $('status_bar');
-        status_bar.appendChild(Builder.node('br'));
+        if (!status_bar) {
+            display_status_cnt = 0;
+            displayStatus(text);
+        }
+        status_bar.appendChild(new Element('br'));
         status_bar.appendChild(text.createTextNode());
     } else {
-        var status_bar = Builder.node('div', {id: 'status_bar'});
+        var status_bar = new Element('div', {id: 'status_bar'});
         Element.hide(status_bar);
         status_bar.appendChild(text.createTextNode());
         Effect.Appear(status_bar);
         document.body.appendChild(status_bar);
-        Event.observe(status_bar, 'click', displayStatusRemove);
+        Event.signalConnect(status_bar, 'click', displayStatusRemove);
     }
     setTimeout(displayStatusRemove, 10000);
 }
@@ -293,6 +311,7 @@ function displayStatusRemove() {
  * */
 function checkElementValue(el) {
     el = $(el);
+    if (!el) return false;
     var options = Object.extend({
 	reg: false,
 	errorString: false,
@@ -301,11 +320,14 @@ function checkElementValue(el) {
 	endColor: '#ffffff',
 	finishColor: 'transparent',
 	deleteValue: false,
-	duration: 0.5
+	duration: 0.5,
+        flash: false
     }, arguments[1] || {});
-    if (!el || (options.reg && !el.value.match(options.reg))
+    if ((options.reg && !el.value.match(options.reg))
 	|| (!options.passEmpty && el.value == "")
-	|| (options.errorString && el.value == options.errorString)) {
+	|| (options.errorString && el.value == options.errorString)
+	|| (options.flash)
+    ) {
 	new Effect.Highlight(el, {
 	    startcolor: options.startColor,
 	    endcolor: options.endColor,
@@ -342,11 +364,10 @@ function exceptionHandler () {
     }
 }
 
-function removeSelectionFromNode(id) {
+function removeSelection() {
     if (window.getSelection) {
 	var sel = window.getSelection();
-	if (sel.containsNode($(id), true))
-	    sel.removeAllRanges();
+        sel.removeAllRanges();
     } else if (document.selection) {
 	try {
 	    document.selection.empty();
@@ -356,10 +377,17 @@ function removeSelectionFromNode(id) {
 }
 
 function keyLogEvent(callback) {
-    if (ie4)
-	Event.observe(document.body, 'keydown', callback);
+    if (Prototype.Browser.IE)
+	Event.signalConnect(document.body, 'keydown', callback);
     else
-	Event.observe(window, 'keypress', callback);
+	Event.signalConnect(window, 'keypress', callback);
+}
+
+function registerFocus(element) {
+    Event.signalConnect(element, 'mouseover', function() {
+        focused_widget = element.id});
+    Event.signalConnect(element, 'click', function() {
+        focused_widget = element.id});
 }
 
 function loseFocus(e) {
@@ -375,3 +403,15 @@ function tryEval(text, total) {
 	setTimeout(function () {if (++total < 20) tryEval(text, total)}, 500);
     }
 }
+
+var browser_css = function() {
+    var b = Prototype.Browser;
+    var class_name = b.IE7 ? 'ie7' :
+		  b.IE     ? 'ie' :
+		  b.Opera  ? 'opera' :
+		  b.KHTML  ? 'khtml' :
+		  b.WebKit ? 'webkit' :
+		  b.Gecko  ? 'gecko' : 'other';
+    var h = $(document.getElementsByTagName('html')[0]);
+    h.addClassName(class_name);
+}();

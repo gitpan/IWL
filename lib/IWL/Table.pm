@@ -18,7 +18,7 @@ IWL::Table - a table widget
 
 =head1 INHERITANCE
 
-IWL::Object -> IWL::Widget -> IWL::Table
+L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Table>
 
 =head1 DESCRIPTION
 
@@ -28,9 +28,19 @@ The Table widget provides a container that holds rows and columns of data.
 
 IWL::Table->new ([B<%ARGS>])
 
-Where B<%ARGS> is an optional hash parameter with with key-values corresponding to the attributes that a regular B<<table>> markup would have.
-  spacing - the cellspacing attribute, defaults to 0
-  padding - the cellpadding attribute, defaults to 0
+Where B<%ARGS> is an optional hash parameter with with key-values corresponding to the attributes that a regular B<E<lt>tableE<gt>> markup would have.
+
+=over 4
+
+=item B<spacing>
+
+The cellspacing attribute, defaults to 0
+
+=item B<padding>
+
+The cellpadding attribute, defaults to 0
+
+=back
 
 =cut
 
@@ -52,7 +62,7 @@ sub new {
         $self->setAttribute(cellpadding => 0);
     }
     delete @args{qw(spacing padding)};
-    $self->__init(%args);
+    $self->IWL::Table::__init(%args);
 
     return $self;
 }
@@ -378,7 +388,6 @@ sub __init {
 
     $self->{_defaultClass} = 'table';
     $args{id} = randomize($self->{_defaultClass}) if !$args{id};
-    my $class = $args{class} || $self->{_defaultClass};
 
     my $header = IWL::Table::Container->new(type  => 'header');
     my $footer = IWL::Table::Container->new(type  => 'footer');

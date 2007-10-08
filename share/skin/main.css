@@ -3,9 +3,7 @@ body {
     font-size: 12px;
     font-family: Verdana, Arial, Helvetica, Sans-Serif;
 }
-.float_left {float: left;}
-.float_right {float: right;}
-.clear {clear: both;}
+
 /* Table */
 table.table {
     border:none;
@@ -310,7 +308,9 @@ div.button {
     float: left;
     margin: 3px;
     cursor: pointer;
-    cursor: hand;
+}
+div.button_disabled {
+    cursor: default;
 }
 div.button_tl {
     position: absolute;
@@ -393,7 +393,7 @@ img.button_image {
     vertical-align: middle;
     background-color: transparent;
 }
-span.button_label_default, span.button_label_medium, span.button_label_small {
+span.button_label {
     padding: 0px;
     margin: 0px;
     border: 0px;
@@ -406,6 +406,16 @@ span.button_label_default, span.button_label_medium, span.button_label_small {
     font-weight: bold;
     font-size: 12px;
     text-align: center;
+}
+
+div.button_disabled div.button_top,
+div.button_disabled div.button_bottom {
+    background-color: #cccccc;
+}
+
+div.button_disabled span.button_label {
+    color: #999;
+    font-weight: normal;
 }
 
 span.button_label_medium {
@@ -754,6 +764,11 @@ div.druid_button_container {
     float: right;
 }
 
+div.druid_page_error {
+    height: 0px;
+    overflow: hidden;
+}
+
 /* Notebook */
 div.notebook_navgroup {
     font-family: Verdana, Arial, Helvetica, sans-serif;
@@ -801,6 +816,11 @@ ul.notebook_mainnav li.notebook_tab_selected a {
     background: url(/iwl/skin/default/images/notebook/activer.gif) no-repeat top right;
 }
 
+.notebook_clear {
+    font-size: 12px;
+    line-height: 12px;
+}
+
 div.notebook_navborder {
     border-top: 1px solid #999;
 }
@@ -829,22 +849,18 @@ div.disabled_view {
     top: 0px;
     left: 0px;
     margin: auto;
-    width: 64px;
-    height: 64px;
     z-index: 90;
     background-color: #858c96;
-    color: black;
-    vertical-align: middle;
-    text-align: left;
-    border: 1px solid #454545;
 }
 div.disabled_view_rail {
-    background: transparent url(/iwl/skin/default/images/loader/loader.gif) no-repeat top left;
+    background: transparent url(/iwl/skin/default/images/loader/loader.gif) no-repeat center;
     position: absolute;
-    width: 32px;
-    height: 32px;
-    margin: 16px;
+    width: 64px;
+    height: 64px;
     z-index: 99;
+    background-color: #858c96;
+    color: black;
+    border: 1px solid #454545;
 }
 div.disabled_view_bouncer {
     width: 20px;
@@ -870,7 +886,7 @@ div#status_bar {
 /* Tooltip */
 div.tooltip {
     position: absolute;
-    z-index: 10;;
+    z-index: 10;
 }
 div.tooltip_bubble {
     position: relative;
@@ -1037,7 +1053,6 @@ div.vertical_slider div.slider_handle {
 }
 
 /* Page control */
-
 span.pagecontrol_label {
     float: left;
     margin-top: 3px;
@@ -1070,4 +1085,186 @@ span.pagecontrol_label input {
 }
 #radios_label {
     margin-bottom: 10px;
+}
+
+/* Accordions */
+.accordion_page_title {
+    background: #f1ece6;
+    color: #535c64;
+    font-size: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #cde99f;
+    padding: 5px;
+    margin: 0;
+}
+
+.accordion_page_title_selected {
+    background: #6a81a3;
+    color: #fefefe;
+}
+
+.accordion_page_content_vertical {
+    height: 0px;
+    overflow: hidden;
+}
+
+.accordion_page_title_horizontal {
+    float: left;
+    border-right: 1px solid #cde99f;
+    height: 100%;
+}
+
+.accordion_page_content_horizontal {
+    float: left;
+    overflow: hidden;
+    height: 100%;
+}
+
+/* Resizer */
+
+.resizer_handle {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    font-size: 1px;
+    background: #eeeeee;
+    border: 1px solid #6a81a3;
+}
+
+.resizer_handle_tl {
+    top: -6px;
+    left: -6px;
+    cursor: nw-resize;
+}
+.resizer_handle_t {
+    top: -6px;
+    left: 50%;
+    margin-left: -3px;
+    cursor: n-resize;
+}
+.resizer_handle_tr {
+    top: -6px;
+    right: -6px;
+    cursor: ne-resize;
+}
+.resizer_handle_l {
+    top: 50%;
+    left: -6px;
+    margin-top: -3px;
+    cursor: w-resize;
+}
+.resizer_handle_r {
+    top: 50%;
+    right: -6px;
+    margin-top: -3px;
+    cursor: e-resize;
+}
+.resizer_handle_bl {
+    bottom: -6px;
+    left: -6px;
+    cursor: sw-resize;
+}
+.resizer_handle_b {
+    bottom: -6px;
+    left: 50%;
+    margin-left: -3px;
+    cursor: s-resize;
+}
+.resizer_handle_br {
+    bottom: -6px;
+    right: -6px;
+    cursor: se-resize;
+}
+.resizer_handler_holder, .resizer_outline {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    right: 0px;
+    bottom: 0px;
+}
+
+.resizer_outline {
+    background: #eeeeee;
+    border: 1px solid  #6a81a3;
+}
+
+/* Calendar */
+.calendar td {
+    text-align: center;
+    padding: 1px 2px;
+}
+.calendar_week_number, .calendar_week_days, .calendar_heading, .calendar_time {
+    background-color: #659DD2;
+    font-weight: bold;
+}
+.calendar_week_day {
+    border-right: 1px solid #999999;
+    border-bottom: 1px solid #999999;
+    cursor: default;
+}
+.calendar_week_day_disabled {
+    color: #999999;
+}
+.calendar_week_day_special {
+    color: red;
+    font-weight: bold;
+}
+.calendar_week_day_special_disabled {
+    color: #dd0000;
+    font-weight: normal;
+}
+.calendar_weekend {
+    background: #eeeeee;
+}
+.calendar_week_day_header {
+    width: 3em;
+}
+.calendar_week_number_header {
+    width: 2em;
+}
+.calendar_weekend_header {
+    color: #000876;
+}
+.calendar_heading td {
+    cursor: pointer;
+}
+.calendar_month, .calendar_year, .calendar_time input {
+    text-align: center;
+    font-size: inherit;
+    color: inherit;
+    font-weight: inherit;
+    border: none;
+    background: transparent;
+}
+.calendar_month_selected, .calendar_year_selected, input.calendar_time_selected {
+    color: yellow;
+}
+.calendar_week_day_selected {
+    background: #90B2D2;
+    font-weight: bold;
+}
+.calendar_time input {
+    width: 2em;
+    cursor: pointer;
+}
+.calendar_time td {
+    white-space: nowrap;
+    vertical-align: middle;
+}
+.calendar_hours_notation {
+    margin-left: 4px;
+    cursor: pointer;
+}
+.calendar_year {
+    width: 4em;
+}
+.calendar_month {
+    width: 10em;
+}
+.calendar_month_cell, .calendar_year_cell {
+    white-space: nowrap;
+}
+
+.calendar caption {
+    font-size: 0.8em;
 }

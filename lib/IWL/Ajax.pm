@@ -23,15 +23,29 @@ updaterCallback is a helper wrapper around Ajax.Updater, to be used as a callbac
 
 Parameters: B<ID> - the id of the container which will be updated, B<URL> - the url of the script that will provide the content, B<%OPTIONS> - a hash with the following options:
 
-I<parameters> - a hash or a javascript hash options of the parameters to be passed to the script
+=over 8
 
-I<evalScripts> - true, if any script elements in the response should be evaluated using javascript's eval() function
+=item I<parameters> 
 
-I<insertion> - if omitted, the contents of the container will be replaced with the response of the script. Otherwise, depeding on the value, the reponse will be placed around the exsting content. Valid values are: I<after> - will be inserted as the next sibling of the container, I<before> - will be inserted as the previous sibling of the container, I<bottom> - will be inserted as the last child of the container, I<top> - will be inserted as the first child of the container
+A hash or a javascript hash options of the parameters to be passed to the script
 
-I<onComplete> - a javascript function to be called after the update takes place
+=item I<evalScripts> 
 
-=cut 
+True, if any script elements in the response should be evaluated using javascript's eval() function
+
+=item I<insertion>
+
+If omitted, the contents of the container will be replaced with the response of the script. Otherwise, depeding on the value, the reponse will be placed around the exsting content. Valid values are: I<after> - will be inserted as the next sibling of the container, I<before> - will be inserted as the previous sibling of the container, I<bottom> - will be inserted as the last child of the container, I<top> - will be inserted as the first child of the container
+
+=item I<onComplete> 
+
+A javascript function to be called after the update takes place
+
+=back
+
+=back
+
+=cut
 
 sub updaterCallback {
     my ($id, $url, %options) = @_;
@@ -49,10 +63,10 @@ sub updaterCallback {
 
     $options .= ",evalScripts: true" if $options{evalScripts};
     $options .= {
-	after  => ',insertion: Insertion.After',
-	before => ',insertion: Insertion.Before',
-	bottom => ',insertion: Insertion.Bottom',
-	top    => ',insertion: Insertion.Top',
+	after  => ",insertion: 'after'",
+	before => ",insertion: 'before'",
+	bottom => ",insertion: 'bottom'",
+	top    => ",insertion: 'top'",
     }->{$options{insertion}} if $options{insertion};
 
     return "new Ajax.Updater('$id', '$url', {$options})";

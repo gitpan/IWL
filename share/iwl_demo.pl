@@ -1,4 +1,5 @@
-#! /usr/bin/perl
+#! /usr/local/bin/perl
+#! /usr/local/bin/perl -d:ptkdb
 # vim: set autoindent shiftwidth=4 tabstop=8:
 
 use strict;
@@ -11,6 +12,7 @@ use IWL::Ajax qw(updaterCallback);
 my $rpc = IWL::RPC->new;
 my %form = $rpc->getParams();
 
+# Tree row handlers
 $rpc->handleEvent(
     'IWL-Tree-Row-expand',
     sub {
@@ -24,6 +26,7 @@ $rpc->handleEvent(
     sub {
 	my $params = shift;
 
+        $ENV{LANG} = $params->{locale} || '';
 	my $func = $::{$params->{function}};
 	if (defined $func && defined *{$func}{CODE}) {
 	    return &{$func}
@@ -55,9 +58,9 @@ $rpc->handleEvent(
     },
     'IWL-Combo-change',
     sub {
-	my $params = shift;
+        my ($params, $id, $elementData) = @_;
 
-	return {text => 'The combo was changed to ' . $params->{value}}, $params;
+        return {text => 'The combo was changed to ' . $elementData->{$id}}, $params;
     },
 );
 
@@ -79,9 +82,9 @@ $rpc->handleEvent(
 	    return IWL::Image->new->set($IWLConfig{IMAGE_DIR} . '/demo/moon.gif');
 	} elsif ($page_number == 2) {
 	    return IWL::Label->new(expand => 1)->setText(<<EOF);
-Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
-Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. 
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. 
+Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
 Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
 EOF
 	} elsif ($page_number == 3) {
@@ -90,15 +93,58 @@ EOF
     }
 );
 
-# Druid handler
+# Druid handlers
 $rpc->handleEvent(
-    'IWL-Druid-Page-check',
+    'IWL-Druid-Page-previous',
     sub {
-	my $params = shift;
-	my $extra = {};
+	my ($params, $id) = @_;
+	my $image = IWL::Image->new, my $label = IWL::Label->new;
 
-	$extra->{deter} = 1 unless $params->{check};
-	return "displayStatus('To proceed to the next page, select the checkbox and try again.')", $extra;
+	if ($id eq 'first_page') {
+	    $image->set($IWLConfig{IMAGE_DIR} . '/demo/moon.gif');
+	    $label->setText('Final page');
+	}
+        return [$image, $label],
+               {
+                   final => {url => 'iwl_demo.pl', options => {update => 'druid_container'}},
+                   newId => 'final_page',
+               }
+    },
+    'IWL-Druid-Page-final',
+    sub {
+	my ($params, $id) = @_;
+	my $label = IWL::Label->new->appendTextType(
+	    'The druid actions have ended', 'h1', style => {'font-style' => 'italic'});
+
+	return $label;
+    },
+    'IWL-Druid-Page-next',
+    sub {
+	my ($params, $id, $elementData) = @_;
+
+	if ($id eq 'first_page') {
+	    my $label = IWL::Label->new->setText(<<'EOF');
+	    Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+EOF
+            my $checkbox = IWL::Checkbox->new(name => 'checkbox')->setValue('bar')->setLabel('Confirm?');
+	    return [$label, $checkbox], {
+		newId => 'second_page',
+                next => {url => 'iwl_demo.pl', params => {what => 'third_page'},
+                    options => {emitOnce => 1, collectData => 1}}
+	    };
+	} elsif ($id eq 'second_page') {
+	    my $label, my %deter;
+            if ($elementData->{checkbox}) {
+                $label = IWL::Label->new->setText('The third page');
+            } else {
+                $label = IWL::Label->new->setText('Please confirm!');
+                %deter = (deter => 1, expression => "displayStatus('Fix it!')");
+            }
+	    return [$label], {
+		newId => 'third_page',
+                %deter
+	    };
+	}
     }
 );
 
@@ -119,22 +165,29 @@ if (my $file = $form{upload_file}) {
     my $container = IWL::Container->new(id => 'content');
     my $style = IWL::Page::Link->newLinkToCSS($IWLConfig{SKIN_DIR} . '/demo.css');
     my @scripts = (qw(demo.js));
+    my $locale = IWL::Combo->new(id => 'locale');
 #    my @scripts = (qw(demo.js button.js iconbox.js tree.js contentbox.js druid.js notebook.js upload.js popup.js firebug/firebug.js));
 
     $page->appendChild($hbox);
     $page->appendHeader($style);
-    $hbox->packStart($tree);
+    $hbox->packStart($tree)->appendChild($locale);
     $hbox->packStart($notebook);
     $page->requiredJs(@scripts);
     $notebook->appendTab('Display', $container)->setId('display_tab');
-    $notebook->appendTab('Source')->setId('source_tab')->registerEvent('IWL-Notebook-Tab-select' => 'iwl_demo.pl', {
+    $notebook->appendTab('Source')->setId('source_tab')->registerEvent('IWL-Notebook-Tab-select' => 'iwl_demo.pl', {}, {
 	    onStart => <<'EOF',
 var content = $('content').down();
 if (content)
     params.codeFor = content.id;
 EOF
 	    update => "source_page",
+	    disableView => {fullCover => 1},
     });
+
+    $locale->appendOption('Български', 'bg');
+    $locale->appendOption('Deutsch', 'de');
+    $locale->appendOption('Français', 'fr');
+    $locale->appendOption('English', 'en', 1);
 
     build_tree($tree);
     $page->setTitle('Widget Library');
@@ -164,7 +217,7 @@ sub build_tree {
     $misc->appendTextCell('Miscellaneous');
     $tree->appendBody($event);
     $event->appendTextCell('IWL Events');
-    $event->registerEvent('IWL-Tree-Row-expand', 'iwl_demo.pl', { jijii => 1});
+    $event->registerEvent('IWL-Tree-Row-expand', 'iwl_demo.pl');
 
     build_basic_widgets($basic_widgets);
     build_advanced_widgets($advanced_widgets);
@@ -194,6 +247,7 @@ sub build_basic_widgets {
 sub build_advanced_widgets {
     my $row = shift;
     my $tables = IWL::Tree::Row->new(id => 'tables_row');
+    my $calendars = IWL::Tree::Row->new(id => 'calendars_row');
     my $combobox = IWL::Tree::Row->new(id => 'combobox_row');
     my $sliders = IWL::Tree::Row->new(id => 'sliders_row');
     my $iconbox = IWL::Tree::Row->new(id => 'iconbox_row');
@@ -202,6 +256,8 @@ sub build_advanced_widgets {
     my $table = IWL::Tree::Row->new(id => 'table_row');
     my $tree = IWL::Tree::Row->new(id => 'tree_row');
 
+    $calendars->appendTextCell('Calendars');
+    $row->appendRow($calendars);
     $combobox->appendTextCell('Combobox');
     $row->appendRow($combobox);
     $sliders->appendTextCell('Sliders');
@@ -219,16 +275,19 @@ sub build_advanced_widgets {
     $tree->appendTextCell('Tree');
     $tables->appendRow($tree);
 
-    register_row_event($combobox, $sliders, $iconbox, $menus, $list, $table, $tree);
+    register_row_event($calendars, $combobox, $sliders, $iconbox, $menus, $list, $table, $tree);
 }
 
 sub build_containers {
     my $row = shift;
+    my $accordions = IWL::Tree::Row->new(id => 'accordions_row');
     my $contentbox = IWL::Tree::Row->new(id => 'contentbox_row');
     my $druid = IWL::Tree::Row->new(id => 'druid_row');
     my $notebook = IWL::Tree::Row->new(id => 'notebook_row');
     my $tooltips = IWL::Tree::Row->new(id => 'tooltips_row');
 
+    $accordions->appendTextCell('Accordions');
+    $row->appendRow($accordions);
     $contentbox->appendTextCell('Contentbox');
     $row->appendRow($contentbox);
     $druid->appendTextCell('Druid');
@@ -238,7 +297,7 @@ sub build_containers {
     $tooltips->appendTextCell('Tooltips');
     $row->appendRow($tooltips);
 
-    register_row_event($contentbox, $druid, $notebook, $tooltips);
+    register_row_event($accordions, $contentbox, $druid, $notebook, $tooltips);
 }
 
 sub build_misc {
@@ -256,16 +315,19 @@ sub generate_buttons {
     my $normal_button = IWL::Button->new(style => {float => 'none'}, id => 'normal_button');
     my $stock_button = IWL::Button->newFromStock('IWL_STOCK_APPLY', style => {float => 'none'}, id => 'stock_button', size => 'medium');
     my $image_button = IWL::Button->new(style => {float => 'none'}, id => 'image_button', size => 'small')->setHref('iwl_demo.pl');
+    my $disabled_button = IWL::Button->new(style => {float => 'none'}, id => 'disabled_button');
     my $input_button = IWL::InputButton->new(id => 'input_button');
     my $check = IWL::Checkbox->new;
     my $radio1 = IWL::RadioButton->new;
     my $radio2 = IWL::RadioButton->new;
 
-    $container->appendChild($normal_button, $stock_button, $image_button, $input_button, $check, IWL::Break->new, $radio1, $radio2);
+    $container->appendChild($normal_button, $stock_button, $image_button, $disabled_button,
+        $input_button, $check, IWL::Break->new, $radio1, $radio2);
     $normal_button->setTitle('This is a title');
     $image_button->setImage('IWL_STOCK_DELETE');
     $normal_button->setLabel('Labeled button')->setClass('demo');
     $stock_button->signalConnect(load => "displayStatus('Stock button loaded')");
+    $disabled_button->setLabel('Disabled button')->setDisabled(1);
     $input_button->setLabel('Input Button');
     $check->setLabel('A check button');
     $radio1->setLabel('A radio button');
@@ -325,11 +387,32 @@ sub generate_labels {
     $container->appendChild($paragraph);
     $normal_label->setText('A label');
     $paragraph->setText(<<EOF);
-Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. 
-Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. 
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. 
+Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
 Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
 EOF
+
+    return $container->getObject;
+}
+
+sub generate_calendars {
+    my $container = IWL::Container->new(id => 'calendars_container');
+    my $entry1 = IWL::Entry->new(readonly => 1);
+    my $calendar1 = IWL::Calendar->new(id => 'calendar1', fromYear => 1989, fromMonth => 2, toYear => 2010, toMonth => 7, startDate => [1990, 3, 1, 12], markedDates => [{month => 0, date => 8}, {year => 1989, month => 11, date => 15}], showTime => 0);
+    my $label = IWL::Label->new->setText("Click the icon to bring up another calendar.\nActivate a date to update the entry and close the calendar.");
+    my $icon = IWL::Image->newFromStock('IWL_STOCK_CALENDAR')->setId('calendar_image');
+    my $tip1 = IWL::Tooltip->new;
+    my $calendar2 = IWL::Calendar->new(id => 'calendar2', astronomicalTime => 0, showHeading => 0, showWeekNumbers => 0, startOnMonday => 0, markWeekends => 0, showAdjacentMonths => 0);
+    my $entry2 = IWL::Entry->new(readonly => 1);
+
+    $tip1->bindToWidget($icon, 'click');
+    $tip1->bindHideToWidget($calendar2, 'activate_date');
+    $calendar1->setCaption("This calendar has a lower boundary at 1989/3, and an upper one at 2010/8. It also has 2 marked dates.");
+    $calendar1->updateOnSignal(change => $entry1, "%A, %b %d, %Y");
+    $calendar2->updateOnSignal(activate_date => $entry2, "%F - %T");
+    $tip1->setContent($calendar2);
+    $container->appendChild($calendar1, $entry1, IWL::Break->new, $label, $icon, $tip1, IWL::Break->new, $entry2);
 
     return $container->getObject;
 }
@@ -534,19 +617,41 @@ sub generate_tree {
     return $container->getObject;
 }
 
+sub generate_accordions {
+    my $container  = IWL::Container->new(id => 'accordions_container');
+    my $accordion  = IWL::Accordion->new(id => 'vertical_accordion');
+    my $horizontal = IWL::Accordion->new(id => 'horizontal_accordion', horizontal => 1, eventActivation => 'mouseover');
+
+    $accordion->appendPage('Introduction', IWL::Label->new->setText('An accordion is a graphical user interface widget in which several sections of a document can be expanded or collapsed, displaying one at a time.')->appendTextType('Whenever a section is selected for opening, the open one is closed.', 'h2'))->setId('intro');
+    $accordion->appendPage('Music', IWL::Label->new->setText('An accordion is a musical instrument of the handheld bellows-driven free reed aerophone family, sometimes referred to as squeezeboxes.'), 1)->setId('music');
+    $accordion->appendPage('History', IWL::Label->new->setText('The accordion\'s basic form was invented in Berlin in 1822 by Friedrich Buschmann. The accordion is one of several European inventions of the early 19th century that used free reeds driven by a bellows; notable among them were:'))->setId('history');
+    $accordion->appendPage('Horizontal', $horizontal);
+    $accordion->appendPage('Misc', IWL::Image->new->set($IWLConfig{IMAGE_DIR} . '/demo/moon.gif'))->appendContent(IWL::Label->new->setText('The Moon (Latin: Luna) is Earth\'s only natural satellite and the fifth largest moon in the Solar System. The average centre-to-centre distance from the Earth to the Moon is 384,403 kilometres (238,857 miles),a which is about 30 times the diameter of the Earth. The Moon has a diameter of 3,474 kilometres (2,159 miles)[1] — slightly more than a quarter that of the Earth. This means that the volume of the Moon is only 1/50th that of Earth. The gravitational pull at its surface is about a 1/6th of Earth\'s. The Moon makes a complete orbit around the Earth every 27.3 days, and the periodic variations in the geometry of the Earth–Moon–Sun system are responsible for the lunar phases that repeat every 29.5 days.'));
+
+    $horizontal->setStyle(height => '150px')->setDefaultSize(width => 400);
+    $horizontal->appendPage('1', IWL::Label->new->setText('Integer commodo nibh sit amet odio. Pellentesque semper. Integer dolor. Donec scelerisque sapien placerat velit.'));
+    $horizontal->appendPage('2', IWL::Label->new->setText('Sed at pede vitae turpis porta condimentum. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Nulla facilisi. Morbi erat. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae.'));
+    $horizontal->appendPage('3', IWL::Label->new->setText('Curabitur quam lorem, laoreet molestie, eleifend id, pulvinar vel, nunc. Proin congue felis quis purus. Aenean porttitor, lacus vel bibendum pulvinar, leo nulla suscipit leo, nec lobortis orci diam eget turpis. Sed eu eros et orci consectetuer molestie. Lorem ipsum dolor sit amet, consectetuer adipiscing elit.'));
+
+    $container->appendChild($accordion);
+
+    return $container->getObject;
+}
+
 sub generate_contentbox {
     my $container = IWL::Container->new(id => 'contentbox_container');
     my $contentbox = IWL::Contentbox->new(id => 'contentbox', autoWidth => 1);
     my $chooser = IWL::Combo->new(id => 'contentbox_chooser');
+    my $outline = IWL::Checkbox->new(id => 'contentbox_outline_check');
 
     $container->appendChild($contentbox);
     $contentbox->appendTitleText('The title');
     $contentbox->appendHeaderText('The header of the contentbox');
     $contentbox->appendContentText('Select the type of the contentbox');
-    $contentbox->appendContent(IWL::Break->new, $chooser);
+    $contentbox->appendContent(IWL::Break->new, $chooser, IWL::Break->new, $outline);
     $contentbox->appendFooterText('The footer of the contentbox');
     $contentbox->setShadows(1);
-    $contentbox->signalConnect(close => q|displayStatus("Don't close me!"); this.show()|);
+    $contentbox->signalConnect(close => q|displayStatus("The contentbox has been closed.")|);
     $chooser->appendOption('none');
     $chooser->appendOption('drag');
     $chooser->appendOption('resize');
@@ -554,24 +659,23 @@ sub generate_contentbox {
     $chooser->appendOption('window');
     $chooser->appendOption('noresize');
     $chooser->signalConnect(change => "contentbox_chooser_change(this)");
+    $outline->setLabel('Outline resizing');
     return $container->getObject;
 }
 
 sub generate_druid {
     my $container = IWL::Container->new(id => 'druid_container');
-    my $druid = IWL::Druid->new(id => 'druid')->setStyle(width => '300px');
+    my $druid = IWL::Druid->new(id => 'druid');
     my $label1 = IWL::Label->new;
-    my $label2 = IWL::Label->new;
 
-    my $page1 = $druid->appendPage($label1)->signalConnect(remove => "displayStatus('Page 1 removed.')");;
-    $druid->appendPage($label2)->signalConnect(select => "displayStatus('Page 2 selected.')");
     $container->appendChild($druid);
+    my $page = $druid->appendPage($label1)->signalConnect(remove => "displayStatus('Page 1 removed.')");;
+    $page->registerEvent(
+	'IWL-Druid-Page-previous', 'iwl_demo.pl', {where => 'going back...'}
+    )->registerEvent(
+        'IWL-Druid-Page-next', 'iwl_demo.pl', {}, {emitOnce => 1}
+    )->setId('first_page');
     $label1->setText('This is page 1');
-    $label2->setText('This is page 2');
-    $page1->appendChild(IWL::Checkbox->new(id => 'druid_check'));
-    $page1->registerEvent('IWL-Druid-Page-check', 'iwl_demo.pl', {
-	    onStart => q|params.check = $('druid_check').checked|
-    });
 
     return $container->getObject;
 }
@@ -594,20 +698,20 @@ sub generate_notebook {
 sub generate_tooltips {
     my $container = IWL::Container->new(id => 'tooltips_container');
     my $button = IWL::Button->new(size => 'medium', style => {float => 'none', margin => '0 auto'});
-    my $label = IWL::Label->new(expand => 1, style => {'text-align' => 'center'});
-    my $image = IWL::Image->new;
+    my $label = IWL::Label->new(expand => 1, style => {'text-align' => 'center', border => '1px solid gray'});
     my $tip1 = IWL::Tooltip->new;
-    my $tip2 = IWL::Tooltip->new;
+    my $tip2 = IWL::Tooltip->new(followMouse => 1);
+    my $calendar = IWL::Calendar->new(id => 'calendar', showTime => 0, showWeekNumbers => 0, noMonthChange => 1);
 
-    $image->set($IWLConfig{SKIN_DIR} . '/images/contentbox/arrow_right.gif');
-    $tip1->bindToWidget($button, 'mouseenter');
-    $tip1->bindHideToWidget($button, 'mouseleave');
-    $tip1->setContent('Some text here.');
+    $tip1->bindToWidget($button, 'click', 1);
+    $tip1->setContent($calendar);
     $tip2->bindToWidget($label, 'mouseover');
     $tip2->bindHideToWidget($label, 'mouseout');
-    $tip2->setContent($image);
-    $button->setLabel("Hover over me");
-    $label->setText("Hover over me");
+    $tip2->setContent('Some text here. Кирилица.');
+    $button->setLabel('Click for date');
+    $label->signalConnect(click => $tip1->showingCallback);
+    $calendar->signalConnect(activate_date => $tip1->hidingCallback);
+    $label->setText('Hover over me');
     $container->appendChild($button, $label, $tip1, $tip2);
 
     return $container->getObject;
@@ -638,13 +742,19 @@ sub generate_rpc_events {
     $combo->appendOption('First option' => 'first');
     $combo->appendOption('Second option' => 'second');
 
-    $link->registerEvent('IWL-Anchor-click', 'iwl_demo.pl', {
+    $link->registerEvent('IWL-Anchor-click', 'iwl_demo.pl', {}, {
 	    onStart => "this.remove()",
 	    update => 'rpc_label',
 	    insertion => 'bottom',
     });
-    $button->registerEvent('IWL-Button-click', 'iwl_demo.pl', {onComplete => "displayStatus(arguments[0].data.text)", emitOnce => 1});
-    $combo->registerEvent('IWL-Combo-change', 'iwl_demo.pl', {onComplete => "displayStatus(arguments[0].data.text)"});
+    $button->registerEvent('IWL-Button-click', 'iwl_demo.pl', {}, {
+            onComplete => "displayStatus(arguments[0].data.text)",
+            emitOnce => 1
+    });
+    $combo->registerEvent('IWL-Combo-change', 'iwl_demo.pl', {}, {
+            onComplete => "displayStatus(arguments[0].data.text)",
+            collectData => 1
+    });
 
     $label->appendChild($link);
     $container->appendChild($label, $button, $combo);
@@ -656,7 +766,7 @@ sub generate_rpc_pagecontrol {
     my $container = IWL::Container->new(id => 'rpc_pagecontrol_container');
     my $content = IWL::Container->new(id => 'page_content');
     my $pager = IWL::PageControl->new(pageCount => 3, pageSize => 10, id => 'pagecontrol')->bindToWidget(
-	  $content, 'iwl_demo.pl', {update => 'page_content', evalScripts => 1}
+          $content, 'iwl_demo.pl', {}, {update => 'page_content', evalScripts => 1}
     );
 
     $content->appendChild(IWL::Image->new->set($IWLConfig{IMAGE_DIR} . '/demo/moon.gif'));
@@ -672,7 +782,10 @@ sub register_row_event {
 	$function =~ s/_row$//;
 	$row->registerEvent('IWL-Tree-Row-activate', 'iwl_demo.pl', {
 		function => $function,
+        }, {
+                onStart => q|params.locale = $('locale').value|,
 		onComplete => 'activate_widgets_response(json)',
+		disableView => 1,
 	});
     }
 }
@@ -746,13 +859,15 @@ sub show_the_code_for {
     my $paragraph = IWL::Label->new;
 
     if ($code_for eq 'buttons_container') {
-	$paragraph->appendTextType(read_code("generate_buttons", 24), 'pre');
+	$paragraph->appendTextType(read_code("generate_buttons", 27), 'pre');
     } elsif ($code_for eq 'entries_container') {
 	$paragraph->appendTextType(read_code("generate_entries", 24), 'pre');
     } elsif ($code_for eq 'images_container') {
 	$paragraph->appendTextType(read_code("generate_images", 17), 'pre');
     } elsif ($code_for eq 'labels_container') {
 	$paragraph->appendTextType(read_code("generate_labels", 18), 'pre');
+    } elsif ($code_for eq 'calendars_container') {
+	$paragraph->appendTextType(read_code("generate_calendars", 20), 'pre');
     } elsif ($code_for eq 'combobox_container') {
 	$paragraph->appendTextType(read_code("generate_combobox", 13), 'pre');
     } elsif ($code_for eq 'slider_container') {
@@ -766,16 +881,20 @@ sub show_the_code_for {
     } elsif ($code_for eq 'table_container') {
 	$paragraph->appendTextType(read_code("generate_table", 41), 'pre');
     } elsif ($code_for eq 'tree_container') {
-	$paragraph->appendTextType(read_code("sub build_tree", 109), 'pre');
+	$paragraph->appendTextType(read_code("sub build_tree", 116), 'pre');
+        $paragraph->appendTextType(read_code("Tree row handlers", 21), 'pre');
+        $paragraph->appendTextType(read_code('^\);', 1), 'pre');
     } elsif ($code_for eq 'contentbox_container') {
-	$paragraph->appendTextType(read_code("generate_contentbox", 22), 'pre');
+	$paragraph->appendTextType(read_code("generate_contentbox", 24), 'pre');
+    } elsif ($code_for eq 'accordions_container') {
+	$paragraph->appendTextType(read_code("generate_accordions", 20), 'pre');
     } elsif ($code_for eq 'druid_container') {
-	$paragraph->appendTextType(read_code("generate_druid", 18), 'pre');
-	$paragraph->appendTextType(read_code("Druid handler", 11), 'pre');
+	$paragraph->appendTextType(read_code("generate_druid", 16), 'pre');
+	$paragraph->appendTextType(read_code("Druid handlers", 54), 'pre');
     } elsif ($code_for eq 'notebook_container') {
 	$paragraph->appendTextType(read_code("generate_notebook", 15), 'pre');
     } elsif ($code_for eq 'tooltips_container') {
-	$paragraph->appendTextType(read_code("generate_tooltips", 22), 'pre');
+	$paragraph->appendTextType(read_code("generate_tooltips", 21), 'pre');
     } elsif ($code_for eq 'file_container') {
 	$paragraph->appendTextType(read_code("generate_file", 13), 'pre');
     } elsif ($code_for eq 'rpc_events_container') {

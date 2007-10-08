@@ -16,7 +16,7 @@ IWL::Menubar - a menubar widget
 
 =head1 INHERITANCE
 
-IWL::Object -> IWL::Widget -> IWL::Container -> IWL::List -> IWL::Menubar
+L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::List> -> L<IWL::Menubar>
 
 =head1 DESCRIPTION
 
@@ -109,7 +109,7 @@ sub prependMenuSeparator {
     return $mi;
 }
 
-=item B<mouseOverActivationSet> (B<BOOL>)
+=item B<setMouseOverActivation> (B<BOOL>)
 
 Sets whether the child menus of the menubar should pop up on mouse over or not
 
@@ -117,15 +117,21 @@ Parameters: B<BOOL> - true if the submenus should pop up on mouse over
 
 =cut
 
-sub mouseOverActivationSet {
+sub setMouseOverActivation {
     my ($self, $bool) = @_;
 
-    if ($bool) {
-      $self->{__mouseOverActivation} = 1;
-    } else {
-      $self->{__mouseOverActivation} = 0;
-    }
+    $self->{__mouseOverActivation} = !(!$bool);
     return $self;
+}
+
+=item B<getMouseOverActivation>
+
+Returns true if the menubar is activated with a mouse-over event
+
+=cut
+
+sub getMouseOverActivation {
+    return !(!shift->{__mouseOverActivation});
 }
 
 # Protected

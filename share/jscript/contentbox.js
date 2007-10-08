@@ -37,10 +37,14 @@ Object.extend(Object.extend(Contentbox, Widget), {
      * 		window - enables dragging, resizing and closing
      * 		noresize - enables dragging and closing
      * 		none - disables everything
+     * @param {Hash} options Options for the selected type
+     *          outline - turns on outline moving/resizing
      * @returns The object
      * */
-    setType: function(type) {
+    setType: function(type, options) {
 	this.options.type = type;
+        this.options.typeOptions =
+            Object.extend(this.options.typeOptions, options || {});
 
 	if (type == 'drag')
 	    this.setDrag();
@@ -126,6 +130,8 @@ Object.extend(Object.extend(Contentbox, Widget), {
 	    this.contentbox_resize.parentNode.removeChild(this.contentbox_resize);
 	    this.contentbox_resize = null;
 	}
+        if (this._resizer)
+            this._resizer.destroy();
 	return this;
     },
     /**
@@ -208,7 +214,7 @@ Object.extend(Object.extend(Contentbox, Widget), {
 	if (text) {
 	    var label = $(this.id + '_title_label');
 	    if (!label)
-		label = this.contentboxTitle.appendChild(Builder.node('span', {id: this.id + '_title_label', className: $A(this.classNames()).first() + '_title_label'}));
+		label = this.contentboxTitle.appendChild(new Element('span', {id: this.id + '_title_label', className: $A(this.classNames()).first() + '_title_label'}));
 	    label.update();
 	    label.appendChild(element);
 	} else {
@@ -243,7 +249,7 @@ Object.extend(Object.extend(Contentbox, Widget), {
         }.bind(this), 10);
     },
 
-    _pre_init: function() {
+    _preInit: function() {
 	if (!this.current) {
 	    var args = arguments;
 	    setTimeout(function() {
@@ -257,6 +263,7 @@ Object.extend(Object.extend(Contentbox, Widget), {
 	this.options = Object.extend({
 	    auto: false,
 	    type: 'none',
+            typeOptions: {},
 	    modal: false,
 	    hasShadows: false,
 	    closeModalOnClick: false,
@@ -266,7 +273,6 @@ Object.extend(Object.extend(Contentbox, Widget), {
 	this.contentboxHeader = $(id + '_header');
 	this.contentboxContent = $(id + '_content');
 	this.contentboxFooter = $(id + '_footerr');
-	this.pointerPosition = false;
 	this.modalElement = null;
 	this.hiddenQuirks = [];
 
@@ -302,7 +308,7 @@ Object.extend(Object.extend(Contentbox, Widget), {
     },
     __createResizeElement: function() {
 	if (this.contentbox_resize) return;
-	var element = Builder.node('div', {
+	var element = new Element('div', {
 	    "class":$A(this.classNames()).first() + '_resize', "id":this.id + '_resize'});
 	if (this.contentboxFooter)
 	    this.contentboxFooter.appendChild(element);
@@ -310,7 +316,7 @@ Object.extend(Object.extend(Contentbox, Widget), {
     },
     __createButtonsElement: function() {
 	if (this.contentbox_buttons) return;
-	var element = Builder.node('div', {
+	var element = new Element('div', {
 	    "class":$A(this.classNames()).first() + '_buttons', "id":this.id + '_buttons'});
 	this.contentboxTitle.appendChild(element);
 	this.contentbox_buttons = element;
@@ -318,7 +324,7 @@ Object.extend(Object.extend(Contentbox, Widget), {
     __createCloseElement: function() {
 	if (this.contentbox_close) return;
 	if (!this.contentbox_buttons) this.__createButtonsElement();
-	var element = Builder.node('div', {
+	var element = new Element('div', {
 	    "class":$A(this.classNames()).first() + '_close', "id":this.id + '_close'});
 	this.contentbox_buttons.appendChild(element);
 	this.contentbox_close = element;
@@ -349,36 +355,22 @@ Object.extend(Object.extend(Contentbox, Widget), {
 	    var max = 0;
 	    var cumulative = 0;
 	    for (var i = 0; i < element.childNodes.length; i++) {
-		var child = $(element.childNodes[i]);
+		var child = Element.extend(element.childNodes[i]);
 		var width = child.getDimensions().width;
-		if (!width) continue;
-		if (child.getStyle('display') == 'inline' || child.id == this.id + '_buttons') {
+                if (child.tagName != 'BR' && (
+                        child.getStyle('display') == 'inline' ||
+                        child.getStyle('float') != 'none')
+                ) {
 		    cumulative += width;
 		    max = max > cumulative ? max : cumulative;
 		} else {
+                    cumulative = 0;
 		    max = max > width ? max : width;
 		}
 	    }
 	    d = max + delta;
 	}
 	return d;
-    },
-    __getRelativePointerPosition: function(evt) {
-	var scroll = Position.scrollOffset(this);
-	var offset = Position.cumulativeOffset(this);
-	var position = scroll[0]  == 0 && scroll[1] == 0 ? offset : scroll;
-	var dimension = this.getDimensions();
-	var pointer = [Event.pointerX(evt), Event.pointerY(evt)];
-	var se = [position[0] + dimension.width, position[1] + dimension.height];
-	padding = parseInt($(this.id + '_middler').getStyle('padding-right'));
-
-	if (pointer[0] >= se[0] - padding && pointer[0] <= se[0] && pointer[1] >= se[1] - padding && pointer[1] <= se[1]) {
-	    this.setStyle({cursor: 'se-resize'});
-	    this.pointerPosition = 'se';
-	} else {
-	    this.setStyle({cursor: 'default'});
-	    this.pointerPosition = false;
-	}
     },
     __setupDrag: function() {
 	this.contentboxTitle.style.cursor = 'move';
@@ -395,17 +387,14 @@ Object.extend(Object.extend(Contentbox, Widget), {
 	return this;
     },
     __setupResize: function() {
-        this.observe('mousemove', this.__getRelativePointerPosition.bindAsEventListener(this));
 	this._resizer = new Resizer(this, {
-	    handle: this,
-	    contentbox: this,
-	    horizontal: true,
-	    vertical: true,
 	    maxHeight: 1000,
 	    maxWidth: 1000,
 	    minHeight: 70,
 	    minWidth: 70,
-	    resizeCallback: this.__resizeCallback.bind(this)});
+            outline: this.options.typeOptions.outline,
+	    onResize: this.__resizeCallback.bind(this)
+        });
 
         return this;
     },
@@ -413,14 +402,14 @@ Object.extend(Object.extend(Contentbox, Widget), {
 	if (this.modalElement) return;
 	var paren = this.parentNode;
 	var zIndex = parseInt(this.getStyle('z-index'));
-	this.modalElement = $(Builder.node('div', {
+	this.modalElement = new Element('div', {
 	    id: this.id + '_modal', className: 'modal_view'
-	}));
+	});
 	if (this.options.closeModalOnClick)
 	    this.modalElement.observe('click', this.close.bind(this));
 	this.modalElement.setOpacity(this.options.modalOpacity);
 	this.modalElement.setStyle({zIndex: zIndex - 1});
-	var page_dims = pageDimensions();
+	var page_dims = document.viewport.getDimensions();
 	this.modalElement.setStyle({
 	    height: page_dims.height + 'px',
 	    width: page_dims.width + 'px'
@@ -428,18 +417,18 @@ Object.extend(Object.extend(Contentbox, Widget), {
 	paren.insertBefore(this.modalElement, this);
 	Event.observe(window, 'resize', function() {
 	    if (!this.modalElement) return;
-	    var page_dims = pageDimensions();
+	    var page_dims = document.viewport.getDimensions();
 	    this.modalElement.setStyle({
 		height: page_dims.height + 'px',
 		width: page_dims.width + 'px'
 	    });
 	}.bind(this));
-	if (ie4 && !ie7) {
+	if (Prototype.Browser.IE && !Prototype.Browser.IE7) {
 	    if (this.options.modal) {
-		this.__qframe = $(Builder.node('iframe', {
+		this.__qframe = new Element('iframe', {
 		    src: "javascript: false", className: "qframe",
 		    style: "width: " + page_dims.width + "px; height: " + page_dims.height + "px;"
-		}));
+		});
 		this.__qframe.setStyle({top: '0px', left: '0px', position: 'absolute'});
 		paren.insertBefore(this.__qframe, this.modalElement);
 	    }
@@ -462,11 +451,11 @@ Object.extend(Object.extend(Contentbox, Widget), {
     },
     __removeQuirks: function() {
 	return;
-	if (!ie4 || ie7) return;
+	if (!Prototype.Browser.IE || Prototype.Browser.IE7) return;
 	if (this.options.modal) return;
 	if (this.__qframe) return;
 	var dims = this.getDimensions();
-	var qframe = Builder.node('iframe', {
+	var qframe = new Element('iframe', {
 	    src: "javascript: false", className: "qframe",
 	    top: "0px", left: "0px",
 	    style: "width: " + dims.width + "px; height: " + dims.height + "px;"
@@ -474,29 +463,42 @@ Object.extend(Object.extend(Contentbox, Widget), {
 	this.__qframe = $(qframe);
 	this.insertBefore(qframe, this.firstChild);
     },
-    __resizeCallback: function(element, d) {
-	d = {width: parseInt(d.width), height: parseInt(d.height)};
+    __resizeCallback: function(element, event, d) {
+        var middle;
+        var height = 0;
+        var resizerName = this._resizer ? this._resizer.options.className : '';
+        var className =$A(this.classNames()).first(); 
 	this.childElements().each(function($_) {
-	    if ($_ != this.contentboxContent.parentNode.parentNode) {
-		var dims = $_.getDimensions();
-		d.height -= dims.height;
-	    }
+            if ($_.hasClassName(className + '_middle')) {
+                middle = $_;
+                return;
+            }
+
+            var ok = false;
+            ['top', 'title', 'header', 'footer', 'bottom'].each(function(c) {
+                if ($_.hasClassName(className + '_' + c)) {
+                    ok = true;
+                    throw $break;
+                }
+            }.bind(this));
+            if (!ok) return;
+            height += $_.getHeight();
 	}.bind(this));
-	this.contentboxContent.setStyle({height: d.height + 'px'});
+        middle.style.height = (d.h - height) + 'px';
     },
     __hideQuirks: function() {
-	if (!ie4 || ie7) return;
+	if (!Prototype.Browser.IE || Prototype.Browser.IE7) return;
 	if (this.options.modal) return;
 	var problematic = ["applet", "select", "iframe"];
 	var dim = this.getDimensions();
-	var pos = Position.cumulativeOffset(this);
+	var pos = this.cumulativeOffset();
 	var thisDelta = {x1: pos[0], x2: pos[0] + dim.width, y1: pos[1], y2: pos[1] + dim.height};
 	for (var k = 0; k < problematic.length; k++) {
 	    var pr_el = $A(document.getElementsByTagName(problematic[k]));
 	    pr_el.each(function(el, $i) {
 		el = $(el);
 		if (el.descendantOf(this)) return;
-		var pos = Position.cumulativeOffset(el);
+		var pos = el.cumulativeOffset();
 		var dim = el.getDimensions();
 		var delta = {x1: pos[0], x2: pos[0] + dim.width, y1: pos[1], y2: pos[1] + dim.height};
 		if (!el._originalVisibility)

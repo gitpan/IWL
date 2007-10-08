@@ -20,15 +20,17 @@ IWL::Tree::Row - a row widget
 
 =head1 INHERITANCE
 
-IWL::Object -> IWL::Widget -> IWL::Table::Row -> IWL::Tree::Row
+L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Table::Row> -> L<IWL::Tree::Row>
 
 =head1 DESCRIPTION
 
-The Row widget provides a row for IWL::Tree. It inherits from IWL::Table::Row.
+The Row widget provides a row for IWL::Tree(3pm). It inherits from IWL::Table::Row(3pm).
 
 =head1 CONSTRUCTOR
 
-IWL::Tree::Row->new ()
+IWL::Tree::Row->new ([B<%ARGS>])
+
+Where B<%ARGS> is an optional hash parameter with with key-values.
 
 =head1 SIGNALS
 
@@ -134,7 +136,7 @@ sub appendRow {
     if ($self->{_tree}) {
 	$row->{_tree} = $self->{_tree};
     }
-    $row->_rebuildPath;
+    $self->_rebuildPath;
     return $self;
 }
 
@@ -154,11 +156,11 @@ sub prependRow {
     unshift @{$self->{_children}}, $row;
     $self->{_isParent} = 1;
 
-    weaken($row->{_parentRow} = $self);
+    $row->{_parentRow} = $self and weaken $row->{_parentRow};
     if ($self->{_tree}) {
 	$row->{_tree} = $self->{_tree};
     }
-    $row->_rebuildPath;
+    $self->_rebuildPath;
     return $self;
 }
 
@@ -437,11 +439,8 @@ sub _realize {
     my $data  = {};
     $data->{path} = $self->getPath;
     @{$data->{childList}} = map { $_->getId } @{$self->{_children}};
-    $data->{parent}     = $self->{_parentRow}->getId if $self->{_parentRow};
     $data->{isParent}   = $self->{_isParent};
     $data->{collapsed}  = $self->{_collapsed};
-    $data->{ajaxUrl}    = $self->{__ajaxUrl};
-    $data->{ajaxParams} = $self->{__ajaxParams};
 
     $self->setAttribute('iwl:treeRowData' => objToJson($data), 'uri');
 
@@ -456,10 +455,10 @@ sub _realize {
 }
 
 sub _expandEvent {
-    my ($params, $handler) = @_;
+    my ($event, $handler) = @_;
 
     IWL::Object::printJSONHeader;
-    my ($list, $user_extras) = $handler->($params->{userData}, $params->{all})
+    my ($list, $extras) = $handler->($event->{params}, $event->{options}{all})
         if 'CODE' eq ref $handler;
     $list = [] unless ref $list eq 'ARRAY';
 
@@ -467,17 +466,16 @@ sub _expandEvent {
 }
 
 sub _registerEvent {
-    my ($self, $event, $params) = @_;
+    my ($self, $event, $params, $options) = @_;
 
-    my $handlers = {};
     if ($event eq 'IWL-Tree-Row-expand') {
 	$self->makeParent;
-	$handlers->{method} = '_expandResponse';
+	$options->{method} = '_expandResponse';
     } else {
-	$self->SUPER::_registerEvent($event, $params);
+	return $self->SUPER::_registerEvent($event, $params, $options);
     }
 
-    return $handlers;
+    return $options;
 }
 
 sub _rebuildPath {

@@ -19,11 +19,11 @@ IWL::Tree - a tree widget
 
 =head1 INHERITANCE
 
-IWL::Object -> IWL::Widget -> IWL::Table -> IWL::Tree
+L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Table> -> L<IWL::Tree>
 
 =head1 DESCRIPTION
 
-The tree widget provides a container that holds cells arranged in a tree layout, with multiple rows. Inherits from IWL::Table;
+The tree widget provides a container that holds cells arranged in a tree layout, with multiple rows. Inherits from IWL::Table(3pm)
 
 =head1 CONSTRUCTOR
 
@@ -31,13 +31,29 @@ IWL::Tree->new ([B<%ARGS>])
 
 Where B<%ARGS> is an optional hash parameter with with key-values:
 
-  list: boolean. true if the tree is a list.
-  multipleSelect: true if the iconbox should be able to select multiple
-                  icons
-  scrollToSelection: true if the selected row should be scrolled into
-                     visibility
-  alternate: true if the tree should alternate
-  animate: true if the tree should animate the collapse of its rows
+=over 4
+
+=item B<list>
+
+Boolean. true if the tree is a list.
+
+=item B<multipleSelect>
+
+True if the iconbox should be able to select multiple icons
+
+=item B<scrollToSelection>
+
+True if the selected row should be scrolled into visibility
+
+=item B<alternate>
+
+True if the tree should alternate
+
+=item B<animate>
+
+True if the tree should animate the collapse of its rows
+
+=back
 
 =head1 SIGNALS
 
@@ -204,7 +220,7 @@ sub appendBody {
         $prev_row->{_lastRow} = 0;
     }
     $self->{_bodyRows}{$row} = 1;
-    weaken($row->{_tree} = $self);
+    $row->{_tree} = $self and weaken $row->{_tree};
     $self->__flag_children($row);
     push @{$self->{_body}{_children}}, $row;
 
@@ -229,7 +245,7 @@ sub prependBody {
 
 sub appendHeader {
     my ($self, $row) = @_;
-    weaken($row->{_tree} = $self);
+    $row->{_tree} = $self and weaken $row->{_tree};
     $row->setNavigation(0);
     $self->SUPER::appendHeader($row);
 }
@@ -243,7 +259,7 @@ sub prependHeader {
 
 sub appendFooter {
     my ($self, $row) = @_;
-    weaken($row->{_tree} = $self);
+    $row->{_tree} = $self and weaken $row->{_tree};
     $self->SUPER::appendFooter($row);
 }
 
@@ -290,30 +306,28 @@ sub _realize {
 }
 
 sub _registerEvent {
-    my ($self, $event, $params) = @_;
+    my ($self, $event, $params, $options) = @_;
 
-    my $handlers = {};
     if ($event eq 'IWL-Tree-refresh') {
-	$handlers->{method} = '_refreshResponse';
-        $handlers->{append} = $params->{append} ? 'true' : 'false';
+	$options->{method} = '_refreshResponse';
     } else {
-	$self->SUPER::_registerEvent($event, $params);
+	return $self->SUPER::_registerEvent($event, $params, $options);
     }
 
-    return $handlers;
+    return $options;
 }
 
 sub _refreshEvent {
-    my ($params, $handler) = @_;
+    my ($event, $handler) = @_;
 
     IWL::Object::printJSONHeader;
-    my ($list, $user_extras) = $handler->($params->{userData})
+    my ($list, $extras) = $handler->($event->{params})
         if 'CODE' eq ref $handler;
     $list = [] unless ref $list eq 'ARRAY';
 
     print '{rows: ['
            . join(',', map {'"' . escape($_->getContent) . '"'} @$list)
-           . '], userExtras: ' . (objToJson($user_extras) || 'null'). '}';
+           . '], extras: ' . (objToJson($extras) || 'null'). '}';
 }
 
 # Internal
