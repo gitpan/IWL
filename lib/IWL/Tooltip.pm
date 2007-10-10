@@ -75,9 +75,9 @@ sub bindToWidget {
     my $to = $widget->getId;
     return $self->_pushError(__x("Invalid id: '{ID}'", ID => $to)) unless $to;
 
-    $self->{__bound} = $to;
-    $self->{__bindSignal} = $signal;
-    $self->{__boundToggle} = $toggle ? 'true' : 'false';
+    $self->{__bound}       = $to;
+    $self->{__bindSignal}  = $signal;
+    $self->{__boundToggle} = $toggle ? 1 : 0;
     return $self;
 }
 
@@ -178,8 +178,8 @@ sub __init {
     $self->{_defaultClass} = 'tooltip';
 
     $self->{_options} = {};
-    $self->{_options}{centerOnElement} = !(!$args{centerOnElement}) if defined $args{centerOnElement};
-    $self->{_options}{followMouse}     = !(!$args{followMouse})     if defined $args{followMouse};
+    $self->{_options}{centerOnElement} = $args{centerOnElement} ? 1 : 0 if defined $args{centerOnElement};
+    $self->{_options}{followMouse}     = $args{followMouse}     ? 1 : 0 if defined $args{followMouse};
 
     $args{id} ||= randomize($self->{_defaultClass});
     $self->{_tag} = "script";

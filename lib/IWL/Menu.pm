@@ -7,9 +7,11 @@ use strict;
 
 use base 'IWL::List';
 
-use IWL::Menu::Item;
-use JSON;
 use IWL::String qw(randomize);
+use IWL::Menu::Item;
+
+use JSON;
+use Locale::TextDomain qw(org.bloka.iwl);
 
 =head1 NAME
 
@@ -28,6 +30,16 @@ A popup menu widget
 IWL::Menu->new ([B<%ARGS>])
 
 Where B<%ARGS> is an optional hash parameter with with key-values.
+
+=head1 SIGNALS
+
+=over 4
+
+=item B<menu_item_activate>
+
+Fires when a menu item has been activated, via double clicking. Receives the activated item as a parameter
+
+=back
 
 =cut
 
@@ -118,15 +130,16 @@ Binds the menu to pop up when the specified widget emits the given signal
 
 Parameters: B<WIDGET> - the widget to bind to, B<SIGNAL> - the signal the widget will emit to pop up the menu
 
-Note: The menu id must not be changed after this method is called.
+Note: The widget ID must not be changed after this method is called.
 
 =cut
 
 sub bindToWidget {
     my ($self, $widget, $signal) = @_;
-    my $id = $self->getId;
+    my $id = $widget->getId;
+    return $self->_pushError(__x("Invalid id: '{ID}'", ID => $id)) unless $id;
+    push @{$self->{__bindWidgets}}, [$id => $signal];
 
-    $widget->signalConnect($signal => "\$('$id')._bindPop(event, this)");
     return $self;
 }
 
@@ -142,9 +155,9 @@ sub setMaxHeight {
     my ($self, $height) = @_;
 
     if ($height > 0) {
-	$self->{__options}{maxHeight} = $height;
+	$self->{_options}{maxHeight} = $height;
     } else {
-	$self->{__options}{maxHeight} = 0;
+	$self->{_options}{maxHeight} = 0;
     }
     return $self;
 }
@@ -156,7 +169,7 @@ Returns the max height of the menu
 =cut
 
 sub getMaxHeight {
-    return shift->{__options}{maxHeight};
+    return shift->{_options}{maxHeight};
 }
 
 # Protected
@@ -165,10 +178,13 @@ sub _realize {
     my $self = shift;
     my $script = IWL::Script->new;
     my $id = $self->getId;
-    my $options = objToJson($self->{__options});
+    my $options = objToJson($self->{_options});
 
     $self->SUPER::_realize;
-    $script->appendScript("Menu.create('$id', $options);");
+    $script->setScript("var menu = Menu.create('$id', $options);");
+    foreach my $bind (@{$self->{__bindWidgets}}) {
+        $script->appendScript(qq{menu.bindToWidget('$bind->[0]', '$bind->[1]')});
+    }
     return $self->_appendAfter($script);
 }
 
@@ -181,7 +197,9 @@ sub __init {
     $args{id} = randomize($self->{_defaultClass}) if !$args{id};
     $self->_constructorArguments(%args);
     $self->requiredJs('base.js', 'menu.js');
-    $self->{__options} = {maxHeight => 0};
+    $self->{_customSignals} = {menu_item_activate => []};
+    $self->{_options} = {maxHeight => 0};
+    $self->{__bindWidgets} = [];
 }
 
 sub __setup_menu_separator {

@@ -58,6 +58,10 @@ Since the Entry is a compound object, settings the class and the id will also se
 
 =over 4
 
+=item B<text>
+
+The input text of the entry
+
 =item B<image1>
 
 The left icon of the entry
@@ -100,9 +104,9 @@ sub setPassword {
     my ($self, $bool) = @_;
 
     if ($bool) {
-        $self->{__entry}->setAttribute(type => 'password');
+        $self->{text}->setAttribute(type => 'password');
     } else {
-        $self->{__entry}->setAttribute(type => 'text');
+        $self->{text}->setAttribute(type => 'text');
     }
 
     return $self;
@@ -115,7 +119,7 @@ Returns true if the entry is a password type
 =cut
 
 sub isPassword {
-    return shift->{__entry}->getAttribute('type') eq 'password';
+    return shift->{text}->getAttribute('type') eq 'password';
 }
 
 =item B<setReadonly> (B<BOOL>)
@@ -130,9 +134,9 @@ sub setReadonly {
     my ($self, $bool) = @_;
 
     if ($bool) {
-        $self->{__entry}->setAttribute(readonly => 'true');
+        $self->{text}->setAttribute(readonly => 'true');
     } else {
-        $self->{__entry}->deleteAttribute('readonly');
+        $self->{text}->deleteAttribute('readonly');
     }
 
     return $self;
@@ -145,7 +149,7 @@ Returns true if the entry is a read-only
 =cut
 
 sub isReadonly {
-    return shift->{__entry}->hasAttribute('readonly');
+    return shift->{text}->hasAttribute('readonly');
 }
 
 =item B<setText> (B<TEXT>)
@@ -159,7 +163,7 @@ Parameter: B<TEXT> - the text.
 sub setText {
     my ($self, $text) = @_;
 
-    $self->{__entry}->setValue($text);
+    $self->{text}->setValue($text);
 
     return $self;
 }
@@ -171,7 +175,7 @@ Returns the text of the entry
 =cut
 
 sub getText {
-    return shift->{__entry}->getValue;
+    return shift->{text}->getValue;
 }
 
 =item B<setDefaultText> (B<TEXT>)
@@ -185,13 +189,13 @@ Parameter: B<TEXT> - the text.
 sub setDefaultText {
     my ($self, $text) = @_;
 
-    $self->{__entry}->signalConnect(blur => <<EOF);
+    $self->{text}->signalConnect(blur => <<EOF);
 if (this.value == '') {
     this.value = '$text';
     \$(this).addClassName('$self->{_defaultClass}_text_default');
 }
 EOF
-    $self->{__entry}->signalConnect(focus => <<EOF);
+    $self->{text}->signalConnect(focus => <<EOF);
 if (this.value == '$text') {
     this.value = '';
     \$(this).removeClassName('$self->{_defaultClass}_text_default');
@@ -224,7 +228,7 @@ Parameter: B<NUM> - a number.
 sub setMaxLength {
     my ($self, $num) = @_;
 
-    $self->{__entry}->setAttribute(maxlength => $num);
+    $self->{text}->setAttribute(maxlength => $num);
     return $self;
 }
 
@@ -235,7 +239,7 @@ Returns the maximum character length of the entry
 =cut
 
 sub getMaxLength {
-    return shift->{__entry}->getAttribute('maxlength');
+    return shift->{text}->getAttribute('maxlength');
 }
 
 =item B<setSize> (B<NUM>)
@@ -249,7 +253,7 @@ Parameter: B<NUM> - a number.
 sub setSize {
     my ($self, $num) = @_;
 
-    $self->{__entry}->setAttribute(size => $num);
+    $self->{text}->setAttribute(size => $num);
     return $self;
 }
 
@@ -260,7 +264,7 @@ Returns the size of the entry field
 =cut
 
 sub getSize {
-    return shift->{__entry}->getAttribute('size');
+    return shift->{text}->getAttribute('size');
 }
 
 =item B<setIcon> (B<SRC>, [B<ALT>, B<POSITION>, B<CLICKABLE>])
@@ -390,9 +394,9 @@ sub setId {
     $self->{image2}->setAttribute(id    => $id . '_image2');
     $self->{__receiver}->setAttribute(id => $id . '_receiver');
     if ($control_id) {
-        $self->{__entry}->setAttribute(id => $control_id);
+        $self->{text}->setAttribute(id => $control_id);
     } else {
-        $self->{__entry}->setAttribute(id => $id . '_text');
+        $self->{text}->setAttribute(id => $id . '_text');
     }
     return $self->__setup_completion;
 }
@@ -408,7 +412,7 @@ sub setAttribute {
 	    return $self;
 	}
     } else {
-        $self->{__entry}->setAttribute($attr, $value);
+        $self->{text}->setAttribute($attr, $value);
 	return $self;
     }
 }
@@ -419,14 +423,14 @@ sub getAttribute {
     if ($attr eq 'id' || $attr eq 'class') {
         return $self->SUPER::getAttribute($attr);
     } else {
-        return $self->{__entry}->getAttribute($attr);
+        return $self->{text}->getAttribute($attr);
     }
 }
 
 sub signalConnect {
     my ($self, $signal, $callback) = @_;
 
-    $self->{__entry}->signalConnect($signal => $callback);
+    $self->{text}->signalConnect($signal => $callback);
     return $self;
 }
 
@@ -434,7 +438,7 @@ sub signalConnect {
 #
 sub _setupDefaultClass {
     my $self = shift;
-    my $password = $self->{__entry}->getAttribute('type', 1);
+    my $password = $self->{text}->getAttribute('type', 1);
 
     $self->prependClass('password') if $password eq 'password';
     $self->prependClass($self->{_defaultClass});
@@ -442,9 +446,9 @@ sub _setupDefaultClass {
     $self->{image2}->prependClass($self->{_defaultClass} . '_image2');
     $self->{__receiver}->prependClass($self->{_defaultClass} . '_receiver');
     if ($self->{__setDefault}) {
-	$self->{__entry}->prependClass($self->{_defaultClass} . '_text_default');
+	$self->{text}->prependClass($self->{_defaultClass} . '_text_default');
     }
-    $self->{__entry}->prependClass($self->{_defaultClass} . '_text');
+    $self->{text}->prependClass($self->{_defaultClass} . '_text');
 }
 
 # Internal
@@ -454,13 +458,12 @@ sub __init {
     my $entry  = IWL::Input->new;
     my $image1 = IWL::Image->new;
     my $image2 = IWL::Image->new;
-    my $span   = IWL::Container->new;
     my $completion = IWL::Script->new;
     my $receiver   = IWL::Container->new;
 
     $self->{image1} = $image1;
     $self->{image2} = $image2;
-    $self->{__entry} = $entry;
+    $self->{text} = $entry;
     $self->{__completion} = $completion;
     $self->{__receiver}   = $receiver;
     $self->{_defaultClass} = 'entry';
@@ -505,7 +508,7 @@ sub __set_clear_callback {
 
 sub __setup_completion {
     my $self = shift;
-    my $id = $self->{__entry}->getId;
+    my $id = $self->{text}->getId;
     my $url = $self->{__completeOptions}{url};
     return $self unless $url;
 

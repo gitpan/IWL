@@ -28,6 +28,16 @@ IWL::Menubar->new ([B<%ARGS>])
 
 Where B<%ARGS> is an optional hash parameter with with key-values.
 
+=head1 SIGNALS
+
+=over 4
+
+=item B<menu_item_activate>
+
+Fires when a menu item has been activated, via double clicking. Receives the activated item as a parameter
+
+=back
+
 =cut
 
 sub new {
@@ -120,7 +130,7 @@ Parameters: B<BOOL> - true if the submenus should pop up on mouse over
 sub setMouseOverActivation {
     my ($self, $bool) = @_;
 
-    $self->{__mouseOverActivation} = !(!$bool);
+    $self->{__mouseOverActivation} = $bool ? 1 : 0;
     return $self;
 }
 
@@ -161,6 +171,7 @@ sub __init {
 
     $self->_constructorArguments(%args);
     $self->requiredJs('base.js', 'menu.js');
+    $self->{_customSignals} = {menu_item_activate => []};
 }
 
 sub __setup_menu_separator {

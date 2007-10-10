@@ -96,6 +96,7 @@ Object.extend(Event, (function() {
         real: 'mouseover',
         callback: function(event, element) {
           var target = event.relatedTarget || Event.relatedTarget(event);
+          try { target.parentNode } catch(e) { target = null }
           if (!target || target == element || Element.descendantOf(target, element)) return;
           Event.emitSignal(element, 'mouseenter', event);
         }
@@ -104,6 +105,7 @@ Object.extend(Event, (function() {
         real: 'mouseout',
         callback: function(event, element) {
           var target = event.relatedTarget || Event.relatedTarget(event);
+          try { target.parentNode } catch(e) { target = null }
           if (!target || target == element || Element.descendantOf(target, element)) return;
           Event.emitSignal(element, 'mouseleave', event);
         }
@@ -390,6 +392,44 @@ Object.extend(String.prototype, {
     return result;
   }
 });
+
+var PeriodicalAccelerator = Class.create((function () {
+  function onTimerEvent() {
+    this.callback(this);
+    if (this.frequency > this.options.border) {
+      this.frequency /= this.acceleration;
+      if (this.frequency < this.options.border)
+        this.frequency = this.options.border;
+    }
+    this.timer = setTimeout(onTimerEvent.bind(this), this.frequency * 1000);
+  }
+
+  return {
+    initialize: function(callback, frequency, acceleration) {
+      this.options = Object.extend({
+        frequency: 1,
+        acceleration: 0.1,
+        border: 0.01
+      }, arguments[1] || {});
+      this.callback = callback;
+      this.frequency = this.options.frequency;
+      this.acceleration = this.options.acceleration + 1;
+      if (this.acceleration <= 0)
+        this.acceleration = 1;
+      this.registerCallback();
+    },
+
+    registerCallback: function() {
+      this.timer = setTimeout(onTimerEvent.bind(this), this.frequency * 1000);
+    },
+
+    stop: function() {
+      if (!this.timer) return;
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+  }
+})());
 
 function $(element) {
   if (arguments.length > 1) {
