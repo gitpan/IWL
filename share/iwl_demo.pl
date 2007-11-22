@@ -138,7 +138,7 @@ EOF
                 $label = IWL::Label->new->setText('The third page');
             } else {
                 $label = IWL::Label->new->setText('Please confirm!');
-                %deter = (deter => 1, expression => "displayStatus('Fix it!')");
+                %deter = (deter => 1, expression => "IWL.Status.display('Fix it!')");
             }
 	    return [$label], {
 		newId => 'third_page',
@@ -148,14 +148,45 @@ EOF
     }
 );
 
+# IWL RPC JavaScript unit tests
+$rpc->handleEvent(
+    'IWL-Object-testEvent',
+    sub {
+        my ($params, $id, $data) = @_;
+        if ($params->{foo}) {
+            return "\$('res1').update('Test: $params->{test}, Foo: $params->{foo}')";
+        } elsif ($params->{text}) {
+            return "$params->{text}"
+        } elsif ($data && $data->{hidden} eq 'foo') {
+            return "true";
+        } elsif ($params->{cancel}) {
+            sleep 1;
+            return "Yes, I am cancelled";
+        }
+    }
+);
+
 if (my $file = $form{upload_file}) {
     my $name = $file->[1];
-    IWL::Upload::printMessage("$name uploaded.");
+    IWL::Upload::printMessage("$name uploaded.", {filename => $name, uploaded => 1});
     exit 0;
 } elsif (my $text = $form{text}) {
     IWL::Object::printHTMLHeader;
     print "The following text was received: $text";
     print IWL::Break->new()->getContent;
+    exit 0;
+} elsif ($form{completion} && (my $search = quotemeta $form{completion})) {
+    my @completions;
+    if ($search =~ /IWL/) {
+        @completions = map{'IWL::'. $_} qw(Calendar Entry List Spinner);
+    } elsif ($search =~ /tk/i) {
+        @completions = qw(GTK+ GTK+2.0 ETK);
+    }
+    IWL::Entry::printCompletions(@completions);
+    exit 0;
+} elsif ($text = $form{image}) {
+    IWL::Object::printHTMLHeader;
+    print "The following text was received: $text";
     exit 0;
 } else {
     my $page = IWL::Page->new;
@@ -164,9 +195,8 @@ if (my $file = $form{upload_file}) {
     my $notebook = IWL::Notebook->new(id => 'main_notebook');
     my $container = IWL::Container->new(id => 'content');
     my $style = IWL::Page::Link->newLinkToCSS($IWLConfig{SKIN_DIR} . '/demo.css');
-    my @scripts = (qw(demo.js));
+    my @scripts = (qw(demo.js dist/unittest.js unittest_extensions.js));
     my $locale = IWL::Combo->new(id => 'locale');
-#    my @scripts = (qw(demo.js button.js iconbox.js tree.js contentbox.js druid.js notebook.js upload.js popup.js firebug/firebug.js));
 
     $page->appendChild($hbox);
     $page->appendHeader($style);
@@ -202,6 +232,7 @@ sub build_tree {
     my $containers = IWL::Tree::Row->new(id => 'containers_row');
     my $misc = IWL::Tree::Row->new(id => 'misc_row');
     my $event = IWL::Tree::Row->new(id => 'event_row');
+    my $tests = IWL::Tree::Row->new(id => 'tests_row');
 
     $tree->appendHeader($header);
     $header->appendTextHeaderCell('Widgets');
@@ -218,11 +249,14 @@ sub build_tree {
     $tree->appendBody($event);
     $event->appendTextCell('IWL Events');
     $event->registerEvent('IWL-Tree-Row-expand', 'iwl_demo.pl');
+    $tree->appendBody($tests);
+    $tests->appendTextCell('JavaScript Unit tests');
 
     build_basic_widgets($basic_widgets);
     build_advanced_widgets($advanced_widgets);
     build_containers($containers);
     build_misc($misc);
+    build_tests($tests);
 }
 
 sub build_basic_widgets {
@@ -313,23 +347,78 @@ sub build_misc {
     register_row_event($file);
 }
 
+sub build_tests {
+    my $row             = shift;
+    my $prototype       = IWL::Tree::Row->new(id => 'prototype_row');
+    my $scriptaculous   = IWL::Tree::Row->new(id => 'scriptaculous_row');
+    my $base            = IWL::Tree::Row->new(id => 'base_row');
+    my $button_test     = IWL::Tree::Row->new(id => 'button_test_row');
+    my $calendar_test   = IWL::Tree::Row->new(id => 'calendar_test_row');
+    my $contentbox_test = IWL::Tree::Row->new(id => 'contentbox_test_row');
+    my $druid_test      = IWL::Tree::Row->new(id => 'druid_test_row');
+    my $entry_test      = IWL::Tree::Row->new(id => 'entry_test_row');
+    my $iconbox_test    = IWL::Tree::Row->new(id => 'iconbox_test_row');
+    my $menu_test       = IWL::Tree::Row->new(id => 'menu_test_row');
+    my $notebook_test   = IWL::Tree::Row->new(id => 'notebook_test_row');
+    my $spinner_test    = IWL::Tree::Row->new(id => 'spinner_test_row');
+    my $tooltip_test    = IWL::Tree::Row->new(id => 'tooltip_test_row');
+    my $tree_test       = IWL::Tree::Row->new(id => 'tree_test_row');
+    my $upload_test     = IWL::Tree::Row->new(id => 'upload_test_row');
+
+    $prototype->appendTextCell('Prototype extesions');
+    $row->appendRow($prototype);
+    $scriptaculous->appendTextCell('Scriptaculous extesions');
+    $row->appendRow($scriptaculous);
+    $base->appendTextCell('Base');
+    $row->appendRow($base);
+    $button_test->appendTextCell('Button Test');
+    $row->appendRow($button_test);
+    $calendar_test->appendTextCell('Calendar Test');
+    $row->appendRow($calendar_test);
+    $contentbox_test->appendTextCell('Contentbox Test');
+    $row->appendRow($contentbox_test);
+    $druid_test->appendTextCell('Druid Test');
+    $row->appendRow($druid_test);
+    $entry_test->appendTextCell('Entry Test');
+    $row->appendRow($entry_test);
+    $iconbox_test->appendTextCell('Iconbox Test');
+    $row->appendRow($iconbox_test);
+    $menu_test->appendTextCell('Menu Test');
+    $row->appendRow($menu_test);
+    $notebook_test->appendTextCell('Notebook Test');
+    $row->appendRow($notebook_test);
+    $spinner_test->appendTextCell('Spinner Test');
+    $row->appendRow($spinner_test);
+    $tooltip_test->appendTextCell('Tooltip Test');
+    $row->appendRow($tooltip_test);
+    $tree_test->appendTextCell('Tree Test');
+    $row->appendRow($tree_test);
+    $upload_test->appendTextCell('Upload Test');
+    $row->appendRow($upload_test);
+
+    register_row_event($prototype, $scriptaculous, $base, $button_test, $calendar_test,
+        $contentbox_test, $druid_test, $entry_test, $iconbox_test, $menu_test,
+        $notebook_test, $spinner_test, $tooltip_test, $tree_test, $upload_test);
+}
+
 sub generate_buttons {
     my $container = IWL::Container->new(id => 'buttons_container');
     my $normal_button = IWL::Button->new(style => {float => 'none'}, id => 'normal_button');
     my $stock_button = IWL::Button->newFromStock('IWL_STOCK_APPLY', style => {float => 'none'}, id => 'stock_button', size => 'medium');
     my $image_button = IWL::Button->new(style => {float => 'none'}, id => 'image_button', size => 'small')->setHref('iwl_demo.pl');
-    my $disabled_button = IWL::Button->new(style => {float => 'none'}, id => 'disabled_button');
+    my $disabled_button = IWL::Button->new(style => {float => 'none', margin => '12px 5px 8px 4px'}, id => 'disabled_button');
     my $input_button = IWL::InputButton->new(id => 'input_button');
     my $check = IWL::Checkbox->new;
     my $radio1 = IWL::RadioButton->new;
     my $radio2 = IWL::RadioButton->new;
+    my $form = IWL::Form->new(target => '_blank', action => 'iwl_demo.pl', name => 'some_form');
 
     $container->appendChild($normal_button, $stock_button, $image_button, $disabled_button,
-        $input_button, $check, IWL::Break->new, $radio1, $radio2);
-    $normal_button->setTitle('This is a title');
+        $input_button, $check, IWL::Break->new, $radio1, $radio2, $form);
+    $normal_button->setTitle('This is a title')->setSubmit(image => 'DELETE', 'some_form');
     $image_button->setImage('IWL_STOCK_DELETE');
     $normal_button->setLabel('Labeled button')->setClass('demo');
-    $stock_button->signalConnect(load => "displayStatus('Stock button loaded')");
+    $stock_button->signalConnect(load => "IWL.Status.display('Stock button loaded')");
     $disabled_button->setLabel('Disabled button')->setDisabled(1);
     $input_button->setLabel('Input Button');
     $check->setLabel('A check button');
@@ -337,20 +426,20 @@ sub generate_buttons {
     $radio2->setLabel('Another radio button');
     $radio1->setGroup('radio')->setClass('demo');
     $radio2->setGroup('radio');
-    return $container->getObject;
+    return $container;
 }
 
 sub generate_entries {
-    my $container = IWL::Container->new(id => 'entries_container');
-    my $normal_entry = IWL::Entry->new;
+    my $container      = IWL::Container->new(id => 'entries_container');
+    my $normal_entry   = IWL::Entry->new;
     my $password_entry = IWL::Entry->new;
-    my $cleanup_entry = IWL::Entry->new;
-    my $image_entry = IWL::Entry->new(id => 'image_entry');
+    my $cleanup_entry  = IWL::Entry->new;
+    my $image_entry    = IWL::Entry->new(id => 'image_entry');
+    my $label          = IWL::Label->new;
+    my $completion     = IWL::Entry->new(id => 'entry_completion');
 
-    $container->appendChild($normal_entry, IWL::Break->new);
-    $container->appendChild($password_entry, IWL::Break->new);
-    $container->appendChild($cleanup_entry, IWL::Break->new);
-    $container->appendChild($image_entry, IWL::Break->new);
+    $container->appendChild($normal_entry, $password_entry, $cleanup_entry,
+        $image_entry, IWL::Break->new, $label, $completion);
     $normal_entry->setDefaultText('Type here');
     $password_entry->setPassword(1);
     $cleanup_entry->addClearButton;
@@ -359,9 +448,11 @@ sub generate_entries {
 	    'entries_container', 'iwl_demo.pl',
 	    parameters => "text: \$F('image_entry_text') || false",
 	    insertion => 'bottom',
-	    onComplete => q|displayStatus.bind(this, 'Completed')|,
+	    onComplete => q|IWL.Status.display.bind(this, 'Completed')|,
     ));
-    return $container->getObject;
+    $label->setText("The following entry provides completion capabilities. Try searching for 'gtk' or 'IWL'.");
+    $completion->setAutoComplete('iwl_demo.pl', paramName => 'completion');
+    return $container;
 }
 
 sub generate_spinners {
@@ -370,8 +461,8 @@ sub generate_spinners {
     my $mask_spinner = IWL::Spinner->new(id => 'masked_spinner', acceleration => 0.5, precision => 2);
 
     $mask_spinner->setRange(-250, 1000)->setWrap(1)->setMask("Цена: #{number} лв")->setIncrements(0.2, 7.6);
-    $container->appendChild($spinner, IWL::Break->new, $mask_spinner);
-    return $container->getObject;
+    $container->appendChild($spinner, $mask_spinner);
+    return $container;
 }
 
 sub generate_images {
@@ -388,7 +479,7 @@ sub generate_images {
     $frame->setLabel('Stock images');
     $normal_image->set($IWLConfig{IMAGE_DIR} . '/demo/moon.gif');
 
-    return $container->getObject;
+    return $container;
 }
 
 sub generate_labels {
@@ -406,7 +497,7 @@ Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu 
 Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
 EOF
 
-    return $container->getObject;
+    return $container;
 }
 
 sub generate_calendars {
@@ -427,7 +518,7 @@ sub generate_calendars {
     $tip1->setContent($calendar2);
     $container->appendChild($calendar1, $entry1, IWL::Break->new, $label, $icon, $tip1, IWL::Break->new, $entry2);
 
-    return $container->getObject;
+    return $container;
 }
 
 sub generate_combobox {
@@ -440,7 +531,7 @@ sub generate_combobox {
     $normal_combobox->appendOption('dolor' => 3);
     $normal_combobox->appendOption('sit' => 4);
 
-    return $container->getObject;
+    return $container;
 }
 
 sub generate_sliders {
@@ -467,7 +558,7 @@ sub generate_sliders {
     $ranged_slider->signalConnect(slide => "\$('ranged_label').update(value)");
     $vertical_slider->signalConnect(slide => "\$('vertical_label').update(value.toPrecision(2))");
 
-    return $container->getObject;
+    return $container;
 }
 
 sub generate_iconbox {
@@ -475,7 +566,7 @@ sub generate_iconbox {
     my $iconbox = IWL::Iconbox->new(id => 'iconbox', width => '310px', height => '200px');
 
     $container->appendChild($iconbox);
-    $iconbox->signalConnect(load => "displayStatus('Iconbox fully loaded')");
+    $iconbox->signalConnect(load => "IWL.Status.display('Iconbox fully loaded')");
     foreach (1 .. 10) {
         my $icon = IWL::Iconbox::Icon->new;
         $iconbox->appendIcon($icon);
@@ -484,14 +575,14 @@ sub generate_iconbox {
 	if ($_ == 5) {
 	    $icon->setText('Irregular icon title');
 	    $icon->signalConnect(select =>
-		  "displayStatus('This callback was activated when icon $_ was selected')");
+		  "IWL.Status.display('This callback was activated when icon $_ was selected')");
 	    $icon->setClass('demo');
 	}
         $icon->setDimensions('80px', '80px');
 	$icon->setSelected(1) if $_ == 1;
     }
 
-    return $container->getObject;
+    return $container;
 }
 
 sub generate_menus {
@@ -509,7 +600,7 @@ sub generate_menus {
     $menubar->appendMenuItem('Edit', undef, id => 'edit_mi')->setSubmenu($edit_menu);
     $menubar->appendMenuSeparator;
     $menubar->appendMenuItem('Help', undef, id => 'help_mi', class => 'demo')->
-      signalConnect('activate' => q|displayStatus('Don\\'t panic!')|);
+      signalConnect('activate' => q|IWL.Status.display('Don\\'t panic!')|);
 
     $file_menu->appendMenuItem('Open')->setClass('demo');
     $file_menu->appendMenuItem('Save', 'IWL_STOCK_SAVE');
@@ -520,7 +611,7 @@ sub generate_menus {
 
     $button->setLabel('Click me!');
     $button_menu->bindToWidget($button, 'click');
-    $button_menu->appendMenuItem("Check item 1", undef)->setType('check')->signalConnect(change => q|displayStatus('Check item 1 changed')|);
+    $button_menu->appendMenuItem("Check item 1", undef)->setType('check')->signalConnect(change => q|IWL.Status.display('Check item 1 changed')|);
     $button_menu->appendMenuItem("Check item 2", undef)->setType('check')->toggle(1);
     $button_menu->appendMenuSeparator;
     $button_menu->appendMenuItem("Radio item 1", undef)->setType('radio')->toggle(1);
@@ -529,11 +620,11 @@ sub generate_menus {
     $button_menu->appendMenuItem("Submenu")->setSubmenu($submenu);
 
     $submenu->setMaxHeight(200)->signalConnect(menu_item_activate => q{
-        displayStatus('Received item ' + arguments[0].id);
+        IWL.Status.display('Received item ' + arguments[1].id);
     });
-    $submenu->appendMenuItem("Submenu item $_")->setType('check') foreach (1 .. 20);
+    $submenu->appendMenuItem("Submenu item $_")->setType('check')->setId($_) foreach (1 .. 20);
 
-    return $container->getObject;
+    return $container;
 }
 
 sub generate_list {
@@ -578,7 +669,7 @@ sub generate_list {
 
     $list->setSortableCallback(2, "sortTheMoney");
 
-    return $container->getObject;
+    return $container;
 }
 
 sub generate_table {
@@ -619,7 +710,7 @@ sub generate_table {
     $body->appendTextCell('4,320,600');
     $body->appendTextCell('$21.80');
 
-    return $container->getObject;
+    return $container;
 }
 
 sub generate_tree {
@@ -629,7 +720,7 @@ sub generate_tree {
     $container->appendChild($label);
     $label->setText('<----   The tree');
 
-    return $container->getObject;
+    return $container;
 }
 
 sub generate_accordions {
@@ -650,7 +741,7 @@ sub generate_accordions {
 
     $container->appendChild($accordion);
 
-    return $container->getObject;
+    return $container;
 }
 
 sub generate_contentbox {
@@ -666,7 +757,7 @@ sub generate_contentbox {
     $contentbox->appendContent(IWL::Break->new, $chooser, IWL::Break->new, $outline);
     $contentbox->appendFooterText('The footer of the contentbox');
     $contentbox->setShadows(1);
-    $contentbox->signalConnect(close => q|displayStatus("The contentbox has been closed.")|);
+    $contentbox->signalConnect(close => q|IWL.Status.display("The contentbox has been closed.")|);
     $chooser->appendOption('none');
     $chooser->appendOption('drag');
     $chooser->appendOption('resize');
@@ -675,7 +766,7 @@ sub generate_contentbox {
     $chooser->appendOption('noresize');
     $chooser->signalConnect(change => "contentbox_chooser_change(this)");
     $outline->setLabel('Outline resizing');
-    return $container->getObject;
+    return $container;
 }
 
 sub generate_druid {
@@ -684,7 +775,7 @@ sub generate_druid {
     my $label1 = IWL::Label->new;
 
     $container->appendChild($druid);
-    my $page = $druid->appendPage($label1)->signalConnect(remove => "displayStatus('Page 1 removed.')");;
+    my $page = $druid->appendPage($label1)->signalConnect(remove => "IWL.Status.display('Page 1 removed.')");;
     $page->registerEvent(
 	'IWL-Druid-Page-previous', 'iwl_demo.pl', {where => 'going back...'}
     )->registerEvent(
@@ -692,7 +783,7 @@ sub generate_druid {
     )->setId('first_page');
     $label1->setText('This is page 1');
 
-    return $container->getObject;
+    return $container;
 }
 
 sub generate_notebook {
@@ -703,11 +794,11 @@ sub generate_notebook {
 
     $container->appendChild($notebook);
     $notebook->appendTab('Page 1', $label1);
-    $notebook->appendTab('Page 2', $label2)->signalConnect(select => "displayStatus(this.getLabel() + ' selected.')");
+    $notebook->appendTab('Page 2', $label2)->signalConnect(select => "IWL.Status.display(this.getLabel() + ' selected.')");
     $label1->setText('This is page 1');
     $label2->setText('This is page 2');
 
-    return $container->getObject;
+    return $container;
 }
 
 sub generate_tooltips {
@@ -729,7 +820,7 @@ sub generate_tooltips {
     $label->setText('Hover over me');
     $container->appendChild($button, $label, $tip1, $tip2);
 
-    return $container->getObject;
+    return $container;
 }
 
 sub generate_file {
@@ -740,9 +831,8 @@ sub generate_file {
     $container->appendChild($label);
     $container->appendChild($file);
     $label->setText('Press the button to upload a file.');
-    $file->setLabel('Browse ...');
 
-    return $container->getObject;
+    return $container;
 }
 
 sub generate_rpc_events {
@@ -763,18 +853,18 @@ sub generate_rpc_events {
 	    insertion => 'bottom',
     });
     $button->registerEvent('IWL-Button-click', 'iwl_demo.pl', {}, {
-            onComplete => "displayStatus(arguments[0].data.text)",
+            onComplete => "IWL.Status.display(arguments[0].data.text)",
             emitOnce => 1
     });
     $combo->registerEvent('IWL-Combo-change', 'iwl_demo.pl', {}, {
-            onComplete => "displayStatus(arguments[0].data.text)",
+            onComplete => "IWL.Status.display(arguments[0].data.text)",
             collectData => 1
     });
 
     $label->appendChild($link);
     $container->appendChild($label, $button, $combo);
 
-    return $container->getObject;
+    return $container;
 }
 
 sub generate_rpc_pagecontrol {
@@ -787,7 +877,201 @@ sub generate_rpc_pagecontrol {
     $content->appendChild(IWL::Image->new->set($IWLConfig{IMAGE_DIR} . '/demo/moon.gif'));
     $container->appendChild($content, $pager);
 
-    return $container->getObject;
+    return $container;
+}
+
+sub generate_prototype {
+    my $container = IWL::Container->new(id => 'prototype_container');
+    my $testlog = IWL::Container->new(id => 'testlog');
+    my $script = IWL::Script->new;
+
+    $script->setScript("run_prototype_tests()");
+    $container->appendChild($testlog, $script);
+    return $container;
+}
+
+sub generate_scriptaculous {
+    my $container = IWL::Container->new(id => 'scriptaculous_container');
+    my $testlog = IWL::Container->new(id => 'testlog');
+    my $script = IWL::Script->new;
+
+    $script->setScript("run_scriptaculous_tests()");
+    $container->appendChild($testlog, $script);
+    return $container;
+}
+
+sub generate_base {
+    my $container = IWL::Container->new(id => 'base_container');
+    my $testlog = IWL::Container->new(id => 'testlog');
+    my $script = IWL::Script->new;
+
+    $script->setScript("run_base_tests()");
+    $container->appendChild($testlog, $script);
+    return $container;
+}
+
+sub generate_button_test {
+    my $container = IWL::Container->new(id => 'button_test_container');
+    my $testlog   = IWL::Container->new(id => 'testlog');
+    my $button    = IWL::Button->new(id => 'button_test');
+    my $script    = IWL::Script->new;
+
+    $script->setScript("run_button_tests()");
+    $container->appendChild($testlog, $button, $script);
+    return $container;
+}
+
+sub generate_calendar_test {
+    my $container = IWL::Container->new(id => 'calendar_test_container');
+    my $testlog   = IWL::Container->new(id => 'testlog');
+    my $calendar  = IWL::Calendar->new(id => 'calendar_test', startDate => [2007, 10, 21, 17, 23, 5]);
+    my $script    = IWL::Script->new;
+
+    $script->setScript("run_calendar_tests()");
+    $container->appendChild($testlog, $calendar, $script);
+    return $container;
+}
+
+sub generate_contentbox_test {
+    my $container  = IWL::Container->new(id => 'contentbox_test_container');
+    my $testlog    = IWL::Container->new(id => 'testlog');
+    my $contentbox = IWL::Contentbox->new(id => 'contentbox_test');
+    my $script     = IWL::Script->new;
+
+    $contentbox->appendTitleText('Tango');
+    $contentbox->appendHeaderText('Foo');
+    $contentbox->appendContentText('Bar');
+    $contentbox->appendFooterText('Baz');
+    $script->setScript("run_contentbox_tests()");
+    $container->appendChild($testlog, $contentbox, $script);
+    return $container;
+}
+
+sub generate_druid_test {
+    my $container = IWL::Container->new(id => 'druid_test_container');
+    my $testlog   = IWL::Container->new(id => 'testlog');
+    my $druid     = IWL::Druid->new(id => 'druid_test');
+    my $script    = IWL::Script->new;
+
+    $druid->appendPage(IWL::Label->new(id => 'first_page_label')->setText('Some text'));
+    $script->setScript("run_druid_tests()");
+    $container->appendChild($testlog, $druid, $script);
+    return $container;
+}
+
+sub generate_entry_test {
+    my $container = IWL::Container->new(id => 'entry_test_container');
+    my $testlog   = IWL::Container->new(id => 'testlog');
+    my $entry     = IWL::Entry->new(id => 'entry_test');
+    my $script    = IWL::Script->new;
+
+    $entry->setIconFromStock('IWL_STOCK_REFRESH');
+    $entry->addClearButton;
+    $script->setScript("run_entry_tests()");
+    $container->appendChild($testlog, $entry, $script);
+    return $container;
+}
+
+sub generate_iconbox_test {
+    my $container = IWL::Container->new(id => 'iconbox_test_container');
+    my $testlog   = IWL::Container->new(id => 'testlog');
+    my $iconbox   = IWL::Iconbox->new(id => 'iconbox_test');
+    my $script    = IWL::Script->new;
+
+    $script->setScript("run_iconbox_tests()");
+    $container->appendChild($testlog, $iconbox, $script);
+    return $container;
+}
+
+sub generate_menu_test {
+    my $container = IWL::Container->new(id => 'menu_test_container');
+    my $testlog   = IWL::Container->new(id => 'testlog');
+    my $menubar   = IWL::Menubar->new(id => 'menubar_test');
+    my $menu      = IWL::Menu->new(id => 'menu_test');
+    my $script    = IWL::Script->new;
+
+    $menubar->appendMenuItem('Item 1', 'IWL_STOCK_SAVE', id => 'item_1')->setSubmenu($menu);
+    $menubar->appendMenuSeparator;
+    $menubar->appendMenuItem('Item 2', undef, id => 'item_2');
+    $menu->appendMenuItem('Item 3', undef, id => 'item_3')->setType('check');
+    $menu->appendMenuSeparator;
+    $menu->appendMenuItem('Item 4', 'IWL_STOCK_CANCEL', id => 'item_4');
+
+    $script->setScript("run_menu_tests()");
+    $container->appendChild($testlog, $menubar, $script);
+    return $container;
+}
+
+sub generate_notebook_test {
+    my $container = IWL::Container->new(id => 'notebook_test_container');
+    my $testlog   = IWL::Container->new(id => 'testlog');
+    my $notebook  = IWL::Notebook->new(id => 'notebook_test');
+    my $script    = IWL::Script->new;
+
+    $script->setScript("run_notebook_tests()");
+    $container->appendChild($testlog, $notebook, $script);
+    return $container;
+}
+
+sub generate_spinner_test {
+    my $container = IWL::Container->new(id => 'spinner_test_container');
+    my $testlog   = IWL::Container->new(id => 'testlog');
+    my $spinner   = IWL::Spinner->new(id => 'spinner_test');
+    my $script    = IWL::Script->new;
+
+    $script->setScript("run_spinner_tests()");
+    $container->appendChild($testlog, $spinner, $script);
+    return $container;
+}
+
+sub generate_tooltip_test {
+    my $container = IWL::Container->new(id => 'tooltip_test_container');
+    my $testlog   = IWL::Container->new(id => 'testlog');
+    my $tooltip   = IWL::Tooltip->new(id => 'tooltip_test', parent => $testlog);
+    my $script    = IWL::Script->new;
+
+    $script->setScript("run_tooltip_tests()");
+    $container->appendChild($testlog, $tooltip, $script);
+    return $container;
+}
+
+sub generate_tree_test {
+    my $container = IWL::Container->new(id => 'tree_test_container');
+    my $testlog   = IWL::Container->new(id => 'testlog');
+    my $tree      = IWL::Tree->new(id => 'tree_test');
+    my $row       = IWL::Tree::Row->new;
+    my $script    = IWL::Script->new;
+
+    $row->appendTextHeaderCell('Main')->makeSortable;
+    $row->appendTextHeaderCell('Secondary')->makeSortable;
+    $tree->appendHeader($row);
+    $row = $row->new;
+    $row->appendTextCell('Foo');
+    $row->appendTextCell('Bar');
+    $tree->appendBody($row);
+    $row = $row->new;
+    $row->appendTextCell('Alpha');
+    $row->appendTextCell('Beta');
+    $tree->appendBody($row);
+    my $child = $row->new;
+    $child->appendTextCell('Baz');
+    $child->appendTextCell('A1');
+    $row->appendRow($child);
+
+    $script->setScript("run_tree_tests()");
+    $container->appendChild($testlog, $tree, $script);
+    return $container;
+}
+
+sub generate_upload_test {
+    my $container = IWL::Container->new(id => 'upload_test_container');
+    my $testlog   = IWL::Container->new(id => 'testlog');
+    my $upload    = IWL::Upload->new(id => 'upload_test', name => 'upload_file', showTooltip => '');
+    my $script    = IWL::Script->new;
+
+    $script->setScript("run_upload_tests()");
+    $container->appendChild($testlog, $upload, $script);
+    return $container;
 }
 
 sub register_row_event {
@@ -822,7 +1106,6 @@ sub read_code {
     eval {
 	my %CSS_colors = (
 	    none      => "</span>",
-
 	    comment      => '<span class="c_comment">',
 	    label      => '<span class="c_label">',
 	    string      => '<span class="c_string">',
@@ -874,9 +1157,11 @@ sub show_the_code_for {
     my $paragraph = IWL::Label->new;
 
     if ($code_for eq 'buttons_container') {
-	$paragraph->appendTextType(read_code("generate_buttons", 27), 'pre');
+	$paragraph->appendTextType(read_code("generate_buttons", 28), 'pre');
     } elsif ($code_for eq 'entries_container') {
-	$paragraph->appendTextType(read_code("generate_entries", 24), 'pre');
+	$paragraph->appendTextType(read_code("generate_entries", 25), 'pre');
+	$paragraph->appendTextType('...', 'pre');
+	$paragraph->appendTextType(read_code('my \$search = quotemeta \$form\{completion\}', 10), 'pre');
     } elsif ($code_for eq 'spinners_container') {
 	$paragraph->appendTextType(read_code("generate_spinners", 9), 'pre');
     } elsif ($code_for eq 'images_container') {
@@ -900,7 +1185,7 @@ sub show_the_code_for {
     } elsif ($code_for eq 'tree_container') {
 	$paragraph->appendTextType(read_code("sub build_tree", 119), 'pre');
         $paragraph->appendTextType(read_code("Tree row handlers", 21), 'pre');
-        $paragraph->appendTextType(read_code('^\);', 1), 'pre');
+        $paragraph->appendTextType(');', 'pre');
     } elsif ($code_for eq 'contentbox_container') {
 	$paragraph->appendTextType(read_code("generate_contentbox", 24), 'pre');
     } elsif ($code_for eq 'accordions_container') {
@@ -913,7 +1198,7 @@ sub show_the_code_for {
     } elsif ($code_for eq 'tooltips_container') {
 	$paragraph->appendTextType(read_code("generate_tooltips", 21), 'pre');
     } elsif ($code_for eq 'file_container') {
-	$paragraph->appendTextType(read_code("generate_file", 13), 'pre');
+	$paragraph->appendTextType(read_code("generate_file", 12), 'pre');
     } elsif ($code_for eq 'rpc_events_container') {
 	$paragraph->appendTextType(read_code("generate_rpc_events", 25), 'pre');
 	$paragraph->appendTextType(read_code("Event row handlers", 21), 'pre');

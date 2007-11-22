@@ -8,9 +8,9 @@ use strict;
 use base 'IWL::Input';
 
 use IWL::Image;
-use IWL::Script;
 use IWL::Container;
 use IWL::String qw(randomize);
+use IWL::JSON qw(toJSON);
 
 =head1 NAME
 
@@ -50,10 +50,6 @@ The maximum number of characters the entry can hold
 
 =back
 
-=head1 NOTES
-
-Since the Entry is a compound object, settings the class and the id will also set the above to the components of the Entry. They will automatically obtain a suffix of "_image1" for the left image, "_image2" for the right image, and "_text" for the text control.
-
 =head1 PROPERTIES
 
 =over 4
@@ -80,10 +76,8 @@ sub new {
 
     my $self = $class->SUPER::new();
 
-    $self->{_tag}   = 'span';
+    $self->{_tag}   = 'div';
     $self->{_noChildren}   = 0;
-    $self->{__clearButton} = 0;
-    $self->{__setDefault}  = 0;
     $self->__init(%args);
     return $self;
 }
@@ -189,21 +183,7 @@ Parameter: B<TEXT> - the text.
 sub setDefaultText {
     my ($self, $text) = @_;
 
-    $self->{text}->signalConnect(blur => <<EOF);
-if (this.value == '') {
-    this.value = '$text';
-    \$(this).addClassName('$self->{_defaultClass}_text_default');
-}
-EOF
-    $self->{text}->signalConnect(focus => <<EOF);
-if (this.value == '$text') {
-    this.value = '';
-    \$(this).removeClassName('$self->{_defaultClass}_text_default');
-}
-EOF
-
-    $self->setText($text) unless $self->getText;
-    $self->{__setDefault} = $text;
+    $self->{_options}{defaultText} = $text;
     return $self;
 }
 
@@ -214,7 +194,7 @@ Returns the default text of the entry
 =cut
 
 sub getDefaultText {
-    return shift->{__setDefault};
+    return shift->{_options}{defaultText};
 }
 
 =item B<setMaxLength> (B<NUM>)
@@ -285,14 +265,12 @@ sub setIcon {
         $self->{image1}->set($src);
         $self->{image1}->setAlt($alt);
 	$self->{image1}->setStyle(cursor => 'pointer') if $clickable;
-	$self->{image1}->{_defaultClass} = $self->{_defaultClass} . '_image1';
 	return $self->{image1};
     } elsif ($position eq 'right') {
         $self->{image2}{_ignore} = 0;
         $self->{image2}->set($src);
         $self->{image2}->setAlt($alt);
 	$self->{image2}->setStyle(cursor => 'pointer') if $clickable;
-	$self->{image2}->{_defaultClass} = $self->{_defaultClass} . '_image2';
 	return $self->{image2};
     }
 }
@@ -314,13 +292,11 @@ sub setIconFromStock {
         $self->{image2}->setFromStock($stock_id) or return;
         $self->{image2}{_ignore} = 0;
 	$self->{image2}->setStyle(cursor => 'pointer') if $clickable;
-	$self->{image2}->{_defaultClass} = $self->{_defaultClass} . '_image2';
 	return $self->{image2};
     } elsif (!$position || $position eq 'left') {
         $self->{image1}->setFromStock($stock_id) or return;
         $self->{image1}{_ignore} = 0;
 	$self->{image1}->setStyle(cursor => 'pointer') if $clickable;
-	$self->{image1}->{_defaultClass} = $self->{_defaultClass} . '_image1';
 	return $self->{image1};
     }
 }
@@ -335,10 +311,8 @@ sub addClearButton {
     my $self = shift;
 
     $self->setIconFromStock(IWL_STOCK_CLEAR => 'right', 1);
-    $self->__set_clear_callback;
-    $self->{__clearButton} = 1;
-    $self->{image2}->setAttribute(id => $self->getId . '_image2');
-    $self->{image2}->{_defaultClass} = $self->{_defaultClass} . '_image2';
+    $self->{image2}->setAttribute(id => $self->getId . '_right');
+    $self->{_options}{clearButton} = 1;
     return $self;
 }
 
@@ -370,9 +344,30 @@ sub setAutoComplete {
     my ($self, $url, %options) = @_;
     return unless $url;
 
-    $self->{__completeOptions}{options} = \%options;
-    $self->{__completeOptions}{url} = $url;
-    return $self->__setup_completion;
+    $self->{_options}{autoComplete} = [$url, \%options];
+    unless ($self->{__completionAdded}) {
+	$self->appendChild($self->{__receiver});
+	$self->{__completionAdded} = 1;
+    }
+    return $self;
+}
+
+=item B<printCompletions> (B<COMPLETION>, ...)
+
+Prints the supplied completions in a format, which is required for auto-completion.
+
+This method is a class method!  You do not need to instantiate an object in order to call it.
+
+=cut
+
+sub printCompletions {
+    my @completions = @_;
+
+    my $list = IWL::List->new->setClass('entry_completion_list');
+    $list->appendListItemText($_) foreach @completions;
+
+    IWL::Object::printTextHeader;
+    return $list->print;
 }
 
 # Overrides
@@ -390,15 +385,14 @@ sub setId {
     my ($self, $id, $control_id) = @_;
 
     $self->setAttribute(id              => $id);
-    $self->{image1}->setAttribute(id    => $id . '_image1');
-    $self->{image2}->setAttribute(id    => $id . '_image2');
+    $self->{image1}->setAttribute(id    => $id . '_left');
+    $self->{image2}->setAttribute(id    => $id . '_right');
     $self->{__receiver}->setAttribute(id => $id . '_receiver');
     if ($control_id) {
         $self->{text}->setAttribute(id => $control_id);
     } else {
         $self->{text}->setAttribute(id => $id . '_text');
     }
-    return $self->__setup_completion;
 }
 
 sub setAttribute {
@@ -406,15 +400,10 @@ sub setAttribute {
 
     if ($attr eq 'id' || $attr eq 'class') {
         $self->SUPER::setAttribute($attr, $value);
-	if ($attr eq 'id') {
-	    return $self->__setup_completion;
-	} else {
-	    return $self;
-	}
     } else {
         $self->{text}->setAttribute($attr, $value);
-	return $self;
     }
+    return $self;
 }
 
 sub getAttribute {
@@ -436,16 +425,27 @@ sub signalConnect {
 
 # Protected
 #
+sub _realize {
+    my $self   = shift;
+    my $id     = $self->getId;
+
+    $self->SUPER::_realize;
+    $self->setStyle(visibility => 'hidden');
+
+    my $options = toJSON($self->{_options});
+    $self->_appendInitScript("IWL.Entry.create('$id', $options);");
+}
+
 sub _setupDefaultClass {
     my $self = shift;
     my $password = $self->{text}->getAttribute('type', 1);
 
     $self->prependClass('password') if $password eq 'password';
     $self->prependClass($self->{_defaultClass});
-    $self->{image1}->prependClass($self->{_defaultClass} . '_image1');
-    $self->{image2}->prependClass($self->{_defaultClass} . '_image2');
+    $self->{image1}->prependClass($self->{_defaultClass} . '_left');
+    $self->{image2}->prependClass($self->{_defaultClass} . '_right');
     $self->{__receiver}->prependClass($self->{_defaultClass} . '_receiver');
-    if ($self->{__setDefault}) {
+    if ($self->{_options}{defaultText}) {
 	$self->{text}->prependClass($self->{_defaultClass} . '_text_default');
     }
     $self->{text}->prependClass($self->{_defaultClass} . '_text');
@@ -455,17 +455,15 @@ sub _setupDefaultClass {
 #
 sub __init {
     my ($self, %args) = @_;
-    my $entry  = IWL::Input->new;
-    my $image1 = IWL::Image->new;
-    my $image2 = IWL::Image->new;
-    my $completion = IWL::Script->new;
-    my $receiver   = IWL::Container->new;
+    my $entry         = IWL::Input->new;
+    my $image1        = IWL::Image->new;
+    my $image2        = IWL::Image->new;
+    my $receiver      = IWL::Container->new;
 
-    $self->{image1} = $image1;
-    $self->{image2} = $image2;
-    $self->{text} = $entry;
-    $self->{__completion} = $completion;
-    $self->{__receiver}   = $receiver;
+    $self->{image1}        = $image1;
+    $self->{image2}        = $image2;
+    $self->{text}          = $entry;
+    $self->{__receiver}    = $receiver;
     $self->{_defaultClass} = 'entry';
 
     $self->appendChild($image1);
@@ -487,50 +485,10 @@ sub __init {
     $image1->{_ignore} = 1;
     $image2->{_ignore} = 1;
 
-    return $self;
-}
+    $self->{_options} = {};
 
-sub __set_clear_callback {
-    my $self  = shift;
+    $self->requiredJs('base.js', 'entry.js');
 
-    $self->{image2}->signalConnect(
-        click => qq|
-	  var clearButton = \$(this).up().cleanWhitespace().down();
-	  if (clearButton) {
-	      clearButton.value = '';
-	      clearButton.focus();
-	  }
-	|
-    );
-
-    return $self;
-}
-
-sub __setup_completion {
-    my $self = shift;
-    my $id = $self->{text}->getId;
-    my $url = $self->{__completeOptions}{url};
-    return $self unless $url;
-
-    my $receiver = $self->{__receiver}->getId;
-    return unless $receiver;
-    my $options = $self->{__completeOptions}{options};
-    my $text = "new Ajax.Autocompleter('$id', '$receiver', '$url', {";
-    foreach my $key (keys %$options) {
-	$text .= "'$key':'$options->{$key}',";
-    }
-    $text =~ s/,$//;
-    $text .= "})";
-    $self->{__completion}->setScript($text);
-    unless ($self->{__completionAdded}) {
-	$self->appendChild($self->{__receiver});
-	$self->appendChild($self->{__completion});
-	$self->{__completionAdded} = 1;
-    }
-    $self->requiredJs('dist/prototype.js');
-    $self->requiredJs('dist/effects.js');
-    $self->requiredJs('dist/controls.js');
-    $self->requiredJs('scriptaculous_extensions.js');
     return $self;
 }
 

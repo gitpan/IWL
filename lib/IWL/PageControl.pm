@@ -7,12 +7,13 @@ use strict;
 
 use base 'IWL::Container';
 
-use Locale::TextDomain qw(org.bloka.iwl);
 use IWL::String qw(randomize);
 use IWL::Label;
 use IWL::Entry;
 use IWL::Button;
-use JSON;
+use IWL::JSON qw(toJSON);
+
+use Locale::TextDomain qw(org.bloka.iwl);
 
 =head1 NAME
 
@@ -122,17 +123,17 @@ sub setId {
 # Protected
 #
 sub _realize {
-    my $self = shift;
-    my $script = IWL::Script->new;
-    my $id = $self->getId;
-    my $options = objToJson($self->{__options});
+    my $self    = shift;
+    my $id      = $self->getId;
+    my $options = toJSON($self->{__options});
+    my $script;
 
     $self->setStyle(display => 'none');
     $self->SUPER::_realize;
-    $script->appendScript("PageControl.create('$id', $options);");
-    $script->appendScript("\$('$id').bindToWidget('$self->{__bind}{widgetId}', '$self->{__bind}{eventName}');")
+    $script = "IWL.PageControl.create('$id', $options);";
+    $script .= "\$('$id').bindToWidget('$self->{__bind}{widgetId}', '$self->{__bind}{eventName}');"
 	if $self->{__options}{bound};
-    return $self->_appendAfter($script);
+    return $self->_appendInitScript($script);
 }
 
 sub _setupDefaultClass {
@@ -152,7 +153,7 @@ sub _setupDefaultClass {
 #
 sub __init {
     my ($self, %args) = @_;
-    my $label = IWL::Label->new;
+    my $label = IWL::Container->new;
     my $page_count = IWL::Label->new->appendText($args{pageCount});
     my $page_entry = IWL::Entry->new->setSize(2);
     my ($first, $prev, $next, $last) = IWL::Button->newMultiple(
@@ -165,15 +166,15 @@ sub __init {
     my $info = __"{PAGEENTRY} of {PAGECOUNT}";
     my ($pre, $post) = $info =~ m{^(.*){PAGEENTRY}(.*)$};
     if ($pre =~ m{^(.*){PAGECOUNT}(.*)$}) {
-	$label->appendText($1)->appendChild($page_count)->appendChild($2);
+        $label->appendChild(IWL::Label->new->setText($1))->appendChild($page_count)->appendChild($2);
     } else {
-	$label->appendText($pre);
+        $label->appendChild(IWL::Label->new->setText($pre));
     }
     $label->appendChild($page_entry);
     if ($post =~ m{^(.*){PAGECOUNT}(.*)$}) {
-	$label->appendText($1)->appendChild($page_count)->appendChild($2);
+        $label->appendChild(IWL::Label->new->setText($1))->appendChild($page_count)->appendChild($2);
     } else {
-	$label->appendText($post);
+        $label->appendChild(IWL::Label->new->setText($post));
     }
 
     $self->{__first} = $first->setImage('IWL_STOCK_GOTO_FIRST');

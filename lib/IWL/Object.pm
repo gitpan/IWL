@@ -6,12 +6,13 @@ package IWL::Object;
 use strict;
 use constant JSON_HEADER => "Content-type: application/json\nX-IWL: 1\n\n";
 use constant HTML_HEADER => "Content-type: text/html; charset=utf-8\n\n";
+use constant TEXT_HEADER => "Content-type: text/plain\n\n";
 
 use IWL::Config qw(%IWLConfig);
-
-use JSON;
-use Scalar::Util qw(weaken isweak);
+use IWL::JSON qw(toJSON);
 use IWL::String qw(encodeURI escapeHTML escape);
+
+use Scalar::Util qw(weaken isweak);
 
 # Used to detect looped networks and avoid infinite recursion.
 use vars qw(%cloneCache);
@@ -64,6 +65,9 @@ sub new {
 
     # Object tag
     $self->{_tag} = '';
+
+    # The initialization scripts
+    $self->{_initScripts} = [];
 
     return $self;
 }
@@ -387,6 +391,7 @@ sub getContent {
     if (!$self->{_realized}) {
 	$self->{_realized} = 1;
 	$self->_realize;
+        $self->__addInitScripts;
     }
 
     return '' if $self->{__objectErrorBad};
@@ -428,11 +433,7 @@ sub getContent {
         $content .= qq( $key="$value");
     }
 
-    my $style = '';
-    foreach my $key (keys %{$self->{_style}}) {
-        my $value = $self->{_style}{$key};
-        $style .= "${key}: $value; ";
-    }
+    my $style = join '; ', map{$_ . ': ' . $self->{_style}{$_}} keys %{$self->{_style}};
     $content .= qq( style="$style") if $style;
 
     if ($self->{_noChildren}) {
@@ -497,6 +498,7 @@ sub getObject {
     if (!$self->{_realized}) {
 	$self->{_realized} = 1;
 	$self->_realize;
+        $self->__addInitScripts;
     }
 
     return {} if $self->{__objectErrorBad};
@@ -505,7 +507,6 @@ sub getObject {
       if (!@{$self->{childNodes}} && ($self->{_removeEmpty})
 	  || $self->{_ignore});
 
-      # can't add scripts on the fly with dom. buggy browser
     foreach (@{$self->{_requiredJs}}) {
 	next if exists $initialized_js{$_->[0]};
 	$initialized_js{$_->[0]} = 1;
@@ -545,7 +546,7 @@ sub getObject {
     $json->{children} = $children if @$children;
     $json->{tag} = $self->{_tag} if $self->{_tag};
     $json->{text} = $self->{_textContent} if defined $self->{_textContent};
-    $json->{after_objects} = $objects if @$objects;
+    $json->{tailObjects} = $objects if @$objects;
     $json->{scripts} = $scripts if @$scripts;
 
     return $json;
@@ -563,13 +564,13 @@ If the html looks like this:
 
 The corresponding JSON object will look like this:
 
-{"div":{"attributes":{"attr1":1,"attr2":2,"style":{"display":"none"}},"children":["child1", "child2":{"attributes":{"attr3":3}}]}}
+{"div": {"attributes": {"attr1": 1, "attr2": 2, "style": {"display": "none"}}, "children": ["child1", "child2": {"attributes": {"attr3": 3}}]}}
 
 =cut
 
 sub getJSON {
     my $self = shift;
-    my $json = objToJson($self->getObject);
+    my $json = toJSON($self->getObject);
 
     return $json;
 }
@@ -595,7 +596,6 @@ Prints the JSON Header which is used by IWL
 =cut
 
 sub printJSONHeader {
-    my $self = shift;
     return print JSON_HEADER;
 }
 
@@ -606,8 +606,17 @@ Prints the HTML Header which is used by IWL
 =cut
 
 sub printHTMLHeader {
-    my $self = shift;
     return print HTML_HEADER;
+}
+
+=item B<printTextHeader>
+
+Prints the Text Header which is used by IWL
+
+=cut
+
+sub printTextHeader {
+    return print TEXT_HEADER;
 }
 
 =item B<setAttribute> (B<ATTR>, B<VALUE>, B<ESCAPING>)
@@ -793,7 +802,7 @@ sub requiredJs {
 	push @{$self->{_requiredJs}}, [$src => $script];
     }
 
-    return 1;
+    return $self;
 }
 
 =item B<requiredConditionalJs> [B<CONDITION>, B<URLS>]
@@ -828,7 +837,7 @@ sub requiredConditionalJs {
 	push @{$self->{_requiredJs}}, [$src => $comment];
     }
 
-    return 1;
+    return $self;
 }
 
 =item B<cleanStateful>
@@ -1033,12 +1042,30 @@ sub _setBad {
 sub _appendAfter {
     my ($self, @objects) = @_;
 
+    warn "_appendAfter is deprecated";
     unshift @{$self->{_tailObjects}}, @objects;
     return $self;
 }
 
+sub _appendInitScript {
+    my ($self, @scripts) = @_;
+
+    push @{$self->{_initScripts}}, @scripts;
+    return $self;
+}
+
 sub _realize {
-# called when the object is realized
+}
+
+sub _findTopParent {
+    my $self = shift;
+    my $parent = $self->{parentNode};
+
+    while ($parent) {
+	last if !$parent->{parentNode} || $parent->{parentNode}->isa('IWL::Page::Body');
+	$parent = $parent->{parentNode};
+    }
+    return $parent;
 }
 
 # Internal
@@ -1073,6 +1100,28 @@ sub __iterateForm {
 
     return $self;
 }
+
+sub __addInitScripts {
+    my $self = shift;
+    if (@{$self->{_initScripts}}) {
+        require IWL::Script;
+
+        my $parent = $self->_findTopParent || $self;
+        my $expr = join '; ', @{$self->{_initScripts}};
+
+        if ($expr) {
+            $parent->{_initScriptElement} = IWL::Script->new
+              unless $parent->{_initScriptElement};
+            $parent->{_initScriptElement}->appendScript($expr . ';');
+        }
+        if ($parent->{_initScriptElement} && !$parent->{_initScriptElement}{_added}) {
+            unshift @{$parent->{_tailObjects}}, $parent->{_initScriptElement}
+              if $parent->{_initScriptElement};
+            $parent->{_initScriptElement}{_added} = 1;
+            $parent->{_initScriptElement}->setAttribute('iwl:initScript');
+        }
+    }
+};
 
 1;
 

@@ -8,8 +8,7 @@ use strict;
 use base 'IWL::Container';
 
 use IWL::String qw(randomize escape);
-
-use JSON;
+use IWL::JSON qw(toJSON);
 
 =head1 NAME
 
@@ -129,7 +128,7 @@ sub setCheckCB {
     return unless $callback;
     $self->setAttribute('iwl:druidCheckCallback' => "$callback", 'none');
     if ($param) {
-        $param = objToJson([$param, $collect ? 1 : 0]);
+        $param = toJSON([$param, $collect ? 1 : 0]);
 	$self->setAttribute('iwl:druidCheckParam' => $param, 'escape');
     }
 
@@ -185,14 +184,15 @@ sub __init {
 
 sub __buttonEvent {
     my ($event, $handler) = @_;
-    my ($list, $extras) = $handler->($event->{params}, $event->{options}{id}, $event->{options}{elementData})
-        if 'CODE' eq ref $handler;
+    my ($list, $extras) = ('CODE' eq ref $handler)
+      ? $handler->($event->{params}, $event->{options}{id}, $event->{options}{elementData})
+      : (undef, undef);
     $list = [] unless ref $list eq 'ARRAY';
     my $html = escape(join('', map {$_->getContent} @$list));
 
     IWL::Object::printJSONHeader;
     print '{data: "' . $html . '", extras: '
-      . (objToJson($extras) || 'null') . '}';
+      . (toJSON($extras) || 'null') . '}';
 }
 
 1;

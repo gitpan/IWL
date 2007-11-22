@@ -7,7 +7,9 @@ li.menu_separator {
 span.menubar_item_label {
     padding: 2px 2px 3px 2px;
 }
-
+span.menubar_item_label_iconic {
+    padding-left: 22px;
+}
 li.menubar_item_selected {
     padding: 0 5px 0 5px;
 }
@@ -17,4 +19,14 @@ div.notebook_content {
 }
 div.shadowbox div.contentbox_footerr {
     padding-bottom: 1px;
+}
+
+div.iconbox_status_label, .icon_label {
+    text-overflow:ellipsis;
+}
+
+/* If the iconbox is in a scrollable static container, the icons will not be clipped in IE7 when the icon container position is relative */
+div.iconbox_icon_container {
+    position: static;
+    _position: relative;
 }

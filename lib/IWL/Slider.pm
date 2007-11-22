@@ -7,8 +7,7 @@ use strict;
 
 use base 'IWL::Input';
 
-use JSON;
-
+use IWL::JSON qw(toJSON);
 use IWL::String qw(randomize);
 
 
@@ -213,12 +212,12 @@ sub signalConnect {
 # Protected
 #
 sub _realize {
-    my $self    = shift;
-    my $script  = IWL::Script->new;
-    my $id      = $self->getId;
-    my $handle  = $self->{__handle}->getId;
-    my $options = '';
+    my $self      = shift;
+    my $id        = $self->getId;
+    my $handle    = $self->{__handle}->getId;
+    my $options   = '';
     my $callbacks = '';
+    my $script;
     my $onchange;
     my $onslide;
     my $range;
@@ -246,30 +245,32 @@ sub _realize {
     } else {
 	$callbacks = $range if $range;
     }
-    $options = objToJson($self->{_options});
+    $options = toJSON($self->{_options});
     if ($options =~ /^{}$/) {
 	$options = "{$callbacks}";
     } else {
 	$options =~ s/^{/{$callbacks, /;
     }
-    $script->setScript("\$('$id').control = new Control.Slider('$handle', '$id', $options)");
-    $script->appendScript("\$('$id').signalConnect('mousewheel', function(event) {
-	var control = \$('$id').control;
-	if (control.options.values) {
-	    var index = control.options.values.indexOf(control.value);
-	    if (event.scrollDirection > 0) index++;
-	    else index--;
-	    if (index >= control.options.values.length) index--;
-	    control.setValue(control.options.values[index]);
-	} else {
-	    var length = control.trackLength / control.increment;
-	    var range = control.maximum - control.minimum;
-	    control.setValueBy((range / length) * event.scrollDirection);
-	}
-	if(control.initialized && control.options.onSlide) 
-	    control.options.onSlide(control.values.length>1 ? control.values : control.value, control);
-    })");
-    $self->_appendAfter($script);
+    $script = "\$('$id').control = new Control.Slider('$handle', '$id', $options);";
+    $script .= <<EOF;
+\$('$id').signalConnect('dom:mousewheel', function(event) {
+    var control = \$('$id').control;
+    if (control.options.values) {
+        var index = control.options.values.indexOf(control.value);
+        if (event.scrollDirection > 0) index++;
+        else index--;
+        if (index >= control.options.values.length) index--;
+        control.setValue(control.options.values[index]);
+    } else {
+        var length = control.trackLength / control.increment;
+        var range = control.maximum - control.minimum;
+        control.setValueBy((range / length) * event.scrollDirection);
+    }
+    if(control.initialized && control.options.onSlide) 
+        control.options.onSlide(control.values.length>1 ? control.values : control.value, control);
+});
+EOF
+    $self->_appendInitScript($script);
 }
 
 sub _setupDefaultClass {
@@ -300,6 +301,11 @@ sub __init {
     $self->{_options}{axis} = $args{vertical} ? 'vertical' : '';
     $self->{__sliderSignals} = {slide => [], change => []};
     delete @args{qw(disabled value)};
+
+    $self->{__handle}->signalConnect('mouseover', qq{\$(this).addClassName('$self->{_defaultClass}_handle_hover')});
+    $self->{__handle}->signalConnect('mouseout', qq{\$(this).removeClassName('$self->{_defaultClass}_handle_hover')});
+    $self->{__handle}->signalConnect('mousedown', qq{\$(this).addClassName('$self->{_defaultClass}_handle_press')});
+    $self->{__handle}->signalConnect('mouseup', qq{\$(this).removeClassName('$self->{_defaultClass}_handle_press')});
     $self->requiredJs('base.js', 'dist/slider.js');
     $self->_constructorArguments(%args);
 

@@ -1,26 +1,25 @@
 // vim: set autoindent shiftwidth=4 tabstop=8:
 /**
- * @class Calendar is a class for adding calendars
- * @extends Widget
+ * @class IWL.Calendar is a class for adding calendars
+ * @extends IWL.Widget
  * */
-var Calendar = {};
-Object.extend(Object.extend(Calendar, Widget), (function() {
+IWL.Calendar = Object.extend(Object.extend({}, IWL.Widget), (function() {
     var weeks_in_month = 6;
 
     function fillMonth() {
         var start_day = this.options.startOnMonday ? 1 : 0;
         var year = this.date.getFullYear();
         var month = this.date.getMonth();
-        var month_input = this.getElementsBySelector('.calendar_month')[0];
-        var year_input = this.getElementsBySelector('.calendar_year')[0];
-        var week_days = this.getElementsBySelector('.calendar_week_days')[0];
+        var month_input = this.select('.calendar_month')[0];
+        var year_input = this.select('.calendar_year')[0];
+        var week_days = this.select('.calendar_week_days')[0];
         var date = this.getDate();
 
         date.setFullYear(year);
         date.setMonth(month);
         date.setDate(1);
 
-        month_input.value = Calendar.months[month];
+        month_input.value = IWL.Calendar.months[month];
         year_input.value = year;
 
         while (date.getDay() != start_day)
@@ -28,12 +27,12 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
 
         if (this._startDayChanged) {
             if (start_day == 0) {
-                var sunday = Element.extend(week_days.cells[1]).update(Calendar.abbreviatedWeekDays[6]);
+                var sunday = Element.extend(week_days.cells[1]).update(IWL.Calendar.abbreviatedWeekDays[6]);
                 if (this.options.markWeekends)
                     sunday.addClassName('calendar_weekend_header');
                 for (day = 0; day < 6; day++) {
                     var cell = Element.extend(week_days.cells[day + 2]);
-                    cell.innerHTML = Calendar.abbreviatedWeekDays[day];
+                    cell.innerHTML = IWL.Calendar.abbreviatedWeekDays[day];
                     if (this.options.markWeekends) {
                         if (day == 5)
                             cell.addClassName('calendar_weekend_header');
@@ -44,7 +43,7 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
             } else {
                 for (day = 0; day < 7; day++) {
                     var cell = Element.extend(week_days.cells[day + 1]);
-                    cell.innerHTML = Calendar.abbreviatedWeekDays[day];
+                    cell.innerHTML = IWL.Calendar.abbreviatedWeekDays[day];
                     if (this.options.markWeekends) {
                         if (day == 5 || day == 6)
                             cell.addClassName('calendar_weekend_header');
@@ -57,7 +56,7 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
             this._startDayChanged = false;
         }
 
-        var week_rows = this.getElementsBySelector('.calendar_week');
+        var week_rows = this.select('.calendar_week');
         for (week = 0; week < weeks_in_month; week++) {
             var row = week_rows[week];
             Element.extend(row.cells[0]).innerHTML = date.getWeek();
@@ -102,10 +101,10 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
     }
 
     function fillTime() {
-        var hours = this.getElementsBySelector('.calendar_hours')[0];
-        var minutes = this.getElementsBySelector('.calendar_minutes')[0];
-        var seconds = this.getElementsBySelector('.calendar_seconds')[0];
-        var notation = this.getElementsBySelector('.calendar_hours_notation')[0];
+        var hours = this.select('.calendar_hours')[0];
+        var minutes = this.select('.calendar_minutes')[0];
+        var seconds = this.select('.calendar_seconds')[0];
+        var notation = this.select('.calendar_hours_notation')[0];
 
         var hour = this.date.getHours();
         if (!this.options.astronomicalTime) {
@@ -133,12 +132,12 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
     }
 
     function connectHeadingSignals() {
-        var month_prev = this.getElementsBySelector('.calendar_month_prev')[0];
-        var month_next = this.getElementsBySelector('.calendar_month_next')[0];
-        var year_prev = this.getElementsBySelector('.calendar_year_prev')[0];
-        var year_next = this.getElementsBySelector('.calendar_year_next')[0];
-        var month = this.getElementsBySelector('.calendar_month')[0];
-        var year = this.getElementsBySelector('.calendar_year')[0];
+        var month_prev = this.select('.calendar_month_prev')[0];
+        var month_next = this.select('.calendar_month_next')[0];
+        var year_prev = this.select('.calendar_year_prev')[0];
+        var year_next = this.select('.calendar_year_next')[0];
+        var month = this.select('.calendar_month')[0];
+        var year = this.select('.calendar_year')[0];
 
         var prev_month = previousMonthEvent.bindAsEventListener(this);
         var next_month = nextMonthEvent.bindAsEventListener(this);
@@ -199,13 +198,13 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
             var date = this.getDate();
             date.setMonth(input.value - 1);
             input.blur();
-            this.emitSignal("change_month", date);
+            this.emitSignal("iwl:change_month", date);
             this.setDate(date);
         }
     }
     function monthBlurEvent(event) {
         var element = event.element();
-        element.value = Calendar.months[this.date.getMonth()];
+        element.value = IWL.Calendar.months[this.date.getMonth()];
         element.removeClassName('calendar_month_selected');
     }
 
@@ -220,7 +219,7 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
             var date = this.getDate();
             date.setFullYear(input.value);
             input.blur();
-            this.emitSignal("change_year", date);
+            this.emitSignal("iwl:change_year", date);
             this.setDate(date);
         }
     }
@@ -231,10 +230,10 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
     }
 
     function connectTimeSignals(event) {
-        var hours = this.getElementsBySelector('.calendar_hours')[0];
-        var minutes = this.getElementsBySelector('.calendar_minutes')[0];
-        var seconds = this.getElementsBySelector('.calendar_seconds')[0];
-        var notation = this.getElementsBySelector('.calendar_hours_notation')[0];
+        var hours = this.select('.calendar_hours')[0];
+        var minutes = this.select('.calendar_minutes')[0];
+        var seconds = this.select('.calendar_seconds')[0];
+        var notation = this.select('.calendar_hours_notation')[0];
 
         var hours_focus = hoursFocusEvent.bindAsEventListener(this);
         var hours_key = hoursKeyEvent.bindAsEventListener(this);
@@ -411,6 +410,7 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
             if (typeof element.onchange == 'function')
                 element.onchange.call(element);
             element.emitSignal('change');
+            element.emitSignal('iwl:change');
         } else {
             element.innerHTML = date.sprintf(format);
         }
@@ -450,7 +450,7 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
 
     function showMarkedDates() {
         if (!this.options.markedDates.length) {
-            this.getElementsBySelector('.calendar_week_day_special').each(function(d) {
+            this.select('.calendar_week_day_special').each(function(d) {
                 d.removeClassName('calendar_week_day_special');
                 d.removeClassName('calendar_week_day_special_disabled');
             });
@@ -479,7 +479,7 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
 
     Object.extend(Date.prototype, {
         sprintf: function(string) {
-            var reg = /%./g;
+            var reg = /%./;
             var day = this.getDay();
             var date = this.getDate();
             var month = this.getMonth() + 1;
@@ -503,16 +503,16 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
             pmhour = pmhour == 0 ? 12 : pmhour;
 
             var format = {
-                a: Calendar.abbreviatedWeekDays[mday - 1],
-                A: Calendar.weekDays[mday - 1],
-                b: Calendar.abbreviatedMonths[month - 1],
-                B: Calendar.months[month - 1],
+                a: IWL.Calendar.abbreviatedWeekDays[mday - 1],
+                A: IWL.Calendar.weekDays[mday - 1],
+                b: IWL.Calendar.abbreviatedMonths[month - 1],
+                B: IWL.Calendar.months[month - 1],
                 C: this.getCentury(),
                 d: padded_date,
                 D: month + '/' + date + '/' + syear,
                 e: date < 10 ? ' ' + date : date,
                 F: year + '-' + padded_month + '-' + padded_date,
-                h: Calendar.abbreviatedMonths[month - 1],
+                h: IWL.Calendar.abbreviatedMonths[month - 1],
                 H: hour < 10 ? '0' + hour : hour,
                 I: pmhour < 10 ? '0' + pmhour : pmhour,
                 j: day_of_year < 10 ? '00' + day_of_year : day_of_year < 100 ? '0' + day_of_year : day_of_year,
@@ -540,21 +540,9 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
             format.R = format.H + ':' + format.M;
             format.T = format.H + ':' + format.M + ':' + format.S;
 
-            if (Prototype.Browser.KTHML) {
-                var match;
-                if (match = string.match(reg)) {
-                    match.each(function(m) {
-                        var replacer = format[m.substring(1)];
-                        var reg1 = new RegExp(m, 'g');
-                        if (replacer)
-                            string = string.replace(reg1, replacer);
-                    });
-                }
-                return string;
-            }
-
-            return string.replace(reg, function(match) {
-                return format[match.substring(1)] || match;
+            return string.gsub(reg, function(match) {
+                var value = format[match[0].substring(1)];
+                return typeof value == 'undefined' ? match : value;
             });
         }
     });
@@ -583,7 +571,7 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
                         fillTime.call(this);
                     }
 
-                    this.emitSignal("change", this.getDate(), this.currentDate);
+                    this.emitSignal("iwl:change", this.getDate(), this.currentDate);
                 }
                 return this;
             }
@@ -601,8 +589,9 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
          * @returns The object
          * */
         showWeekNumbers: function(show) {
-            var cells = this.getElementsBySelector('.calendar_week_number_header').concat(
-                this.getElementsBySelector('.calendar_week_number'));
+            var cells = this.select('.calendar_week_number_header').concat(
+                this.select('.calendar_week_number')).concat(
+                this.select('.calendar_header_cell')[0]);
             cells.invoke(show ? 'show' : 'hide');
             return this;
         },
@@ -612,7 +601,7 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
          * @returns The object
          * */
         showHeading: function(show) {
-            var row = this.getElementsBySelector('.calendar_heading')[0];
+            var row = this.select('.calendar_heading')[0];
             if (show) row.show();
             else row.hide();
             return this;
@@ -623,7 +612,7 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
          * @returns The object
          * */
         showTime: function(show) {
-            var row = this.getElementsBySelector('.calendar_time')[0];
+            var row = this.select('.calendar_time')[0];
             if (show) row.show();
             else row.hide();
             return this;
@@ -631,7 +620,7 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
         /**
          * @param {Date} date The date for which to search
          * @returns The date cell for the given date
-         * @type CalendarDate
+         * @type IWL.Calendar.Date
          * */
         getByDate: function(date) {
             var cell;
@@ -775,7 +764,7 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
             if (isNaN(this.date.getFullYear()))
                 this.startDate = this.date = new Date;
 
-            Object.extend(Calendar, arguments[2]);
+            Object.extend(IWL.Calendar, arguments[2]);
 
             if (!this.options.showWeekNumbers)
                 this.showWeekNumbers(false);
@@ -784,8 +773,8 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
             if (!this.options.showTime)
                 this.showTime(false);
 
-            this.dateCells = this.getElementsBySelector('.calendar_week_day');
-            this.dateCells.each(function(d) { CalendarDate.create(d, this) }.bind(this));
+            this.dateCells = this.select('.calendar_week_day');
+            this.dateCells.each(function(d) { IWL.Calendar.Date.create(d, this) }.bind(this));
             this._startDayChanged = true;
             fillTime.call(this);
             fillMonth.call(this);
@@ -794,20 +783,19 @@ Object.extend(Object.extend(Calendar, Widget), (function() {
 
             connectHeadingSignals.call(this);
             connectTimeSignals.call(this);
-            keyLogEvent(this, keyEventsCB.bindAsEventListener(this));
-            registerFocus(this);
+            this.keyLogger(keyEventsCB.bindAsEventListener(this));
+            this.registerFocus;
 
-            this.emitSignal('load');
+            this.emitSignal('iwl:load');
         }
     }
 })());
 
 /**
- * @class CalendarDate is a class for dates which make up a calendar
- * @extends Widget
+ * @class IWL.Calendar.Date is a class for dates which make up a calendar
+ * @extends IWL.Widget
  * */
-var CalendarDate = {};
-Object.extend(Object.extend(CalendarDate, Widget), (function() {
+IWL.Calendar.Date = Object.extend(Object.extend({}, IWL.Widget), (function() {
     function dateClickEvent(event) {
         var date = this.getDate();
         this.calendar.setDate(date);
@@ -833,13 +821,13 @@ Object.extend(Object.extend(CalendarDate, Widget), (function() {
                 this.addClassName('calendar_week_day_selected');
                 this.calendar.currentDate = this;
 
-                this.calendar.emitSignal('select_date', this.getDate(), this);
-                this.emitSignal('select', this.getDate());
+                this.calendar.emitSignal('iwl:select_date', this.getDate(), this);
+                this.emitSignal('iwl:select', this.getDate());
             } else {
                 this.removeClassName('calendar_week_day_selected');
                 if (this.calendar.currentDate == this)
                     this.calendar.currentDate = null;
-                this.emitSignal('unselect', this.getDate());
+                this.emitSignal('iwl:unselect', this.getDate());
             }
 
             return this;
@@ -856,8 +844,8 @@ Object.extend(Object.extend(CalendarDate, Widget), (function() {
          * @returns The object
          * */
         activate: function() {
-            this.calendar.emitSignal('activate_date', this.getDate(), this);
-            this.emitSignal('activate', this.getDate());
+            this.calendar.emitSignal('iwl:activate_date', this.getDate(), this);
+            this.emitSignal('iwl:activate', this.getDate());
             return this;
         },
         /**
@@ -882,3 +870,7 @@ Object.extend(Object.extend(CalendarDate, Widget), (function() {
         }
     }
 })());
+
+/* Deprecated */
+var Calendar = IWL.Calendar;
+var CalendarDate = IWL.Calendar.Date;

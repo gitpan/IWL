@@ -7,7 +7,6 @@ use strict;
 
 use base qw (IWL::Widget);
 
-use JSON;
 use IWL::Anchor;
 
 use Locale::TextDomain qw(org.bloka.iwl);
@@ -272,7 +271,7 @@ EOF
 			   . " in order to obtain a key from Google."));
     }
 
-    $self->_appendAfter ($elem);
+    unshift @{$self->{_tailObjects}}, $elem;
     return $self;
 }
 

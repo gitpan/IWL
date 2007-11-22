@@ -17,7 +17,7 @@ L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::HBox>
 
 =head1 DESCRIPTION
 
-While there's really no need for a vertical box container (the elements are stacked vertically in html), an HBox is just a time saver, so developers don't have to add a float style to their containers.
+An HBox is a container for stacking L<IWL::Widget>s horizontally.
 
 =head1 CONSTRUCTOR
 
@@ -43,7 +43,7 @@ sub new {
 
 =item B<packStart> (B<WIDGET>, [B<MARGIN>])
 
-Packs the given widget from the left side of the container.
+Packs the given widget to the left side of the container.
 
 Parameters: B<WIDGET> - the widget to be packed, B<MARGIN> - the margin
 
@@ -53,18 +53,19 @@ Returns: the packing container
 
 sub packStart {
     my ($self, $widget, $margin) = @_;
-    my $pack = IWL::Container->new(class => 'hbox_start');
+    my $pack = IWL::Container->new;
 
     $self->appendChild($pack);
     $pack->setStyle(margin => $margin) if $margin;
     $pack->appendChild($widget);
+    $pack->{_defaultClass} = 'hbox_start';
 
     return $pack;
 }
 
 =item B<packEnd> (B<WIDGET>, [B<MARGIN>])
 
-Packs the given widget from the right side of the container.
+Packs the given widget to the right side of the container.
 
 Parameters: B<WIDGET> - the widget to be packed, B<MARGIN> - the margin
 
@@ -74,26 +75,14 @@ Returns: the packing container
 
 sub packEnd {
     my ($self, $widget, $margin) = @_;
-    my $pack = IWL::Container->new(class => 'hbox_end');
+    my $pack = IWL::Container->new;
 
     $self->appendChild($pack);
     $pack->setStyle(margin => $margin) if $margin;
     $pack->appendChild($widget);
+    $pack->{_defaultClass} = 'hbox_end';
 
     return $pack;
-}
-
-# Overrides
-#
-sub setId {
-    my ($self, $id) = @_;
-    return if !$id;
-
-    my $children = $self->{childNodes};
-    for (my $i = 0; $i < scalar @$children; $i++) {
-	$children->{$i}->setId($id . '_pack_' . $i);
-    }
-    return $self->SUPER::setId($id);
 }
 
 # Protected
@@ -101,6 +90,7 @@ sub setId {
 sub _realize {
     my $self = shift;
 
+    $self->SUPER::_realize;
     $self->appendAfter(IWL::Container->new(inline => 1, style => {clear => 'both'}));
 }
 

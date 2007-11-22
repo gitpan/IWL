@@ -9,7 +9,8 @@ use base 'IWL::Container';
 
 use IWL::Accordion::Page;
 use IWL::String qw(randomize);
-use JSON;
+use IWL::JSON qw(toJSON);
+
 use Scalar::Util qw(weaken);
 
 =head1 NAME
@@ -208,7 +209,6 @@ sub getDefaultSize {
 #
 sub _realize {
     my $self     = shift;
-    my $script   = IWL::Script->new;
     my $id       = $self->getId;
     my @pages    = @{$self->{__pages}};
     my $selected = 0;
@@ -224,14 +224,13 @@ sub _realize {
 	toggleActive => $self->{_defaultClass} . '_page_title_selected',
 	content      => $self->{_defaultClass} . '_page_content'
     };
-    my $options  = objToJson($self->{_options});
-    my $text = <<EOF;
+    my $options  = toJSON($self->{_options});
+    my $script = <<EOF;
 var accordion_widget = \$('$id');
 accordion_widget.control = new accordion('#$id', $options);
 accordion_widget.control.activate(\$('$page_id'));
 EOF
-    $script->setScript($text);
-    $self->_appendAfter($script);
+    $self->_appendInitScript($script);
 }
 
 sub _setupDefaultClass {

@@ -11,8 +11,6 @@ use IWL::Image;
 use IWL::Label;
 use IWL::String qw(randomize);
 
-use JSON;
-
 =head1 NAME
 
 IWL::Iconbox::Icon - an icon widget for the iconbox 
@@ -197,22 +195,6 @@ sub signalConnect {
     }
 
     return $self;
-}
-
-# Protected
-#
-sub _realize {
-    my $self = shift;
-    my $id = $self->getId;
-
-    $self->SUPER::_realize;
-    $self->signalConnect(load => <<'EOF');
-var iconbox = $(this).up(null, 2);
-if (iconbox && iconbox._iconCountdown)
-    iconbox._iconCountdown();
-else
-    this.up()._loaded = true;
-EOF
 }
 
 # Internal

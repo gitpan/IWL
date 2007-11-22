@@ -7,10 +7,8 @@ use strict;
 
 use base 'IWL::Entry';
 
-use IWL::Script;
 use IWL::String qw(randomize);
-
-use JSON;
+use IWL::JSON qw(toJSON);
 
 =head1 NAME
 
@@ -85,10 +83,6 @@ The numeric precision of the spinner, in fixed-point notation
 The spinner mask
 
 =back
-
-=head1 NOTES
-
-Since the Spinner is a compound object, settings the class and the id will also set the above to the components of the Entry. They will automatically obtain a suffix of "_left" for the left image, "_left" for the right image, and "_text" for the text control.
 
 =cut
 
@@ -291,7 +285,7 @@ sub isSnapping {
 
 Sets the mask of the spinner. A mask defines a string, a portion of which represents the numeric value, and the rest is text.
 
-Parameters: B<MASK> - a string mask. In order to display the spinner value, the string must contain I<#{number}>. e.g.: "#{number} euros"
+Parameters: B<MASK> - a string mask. In order to display the spinner value, the string must contain I<#{number}>. e.g.: "#{number} euro"
 
 =cut
 
@@ -378,14 +372,12 @@ sub _setupDefaultClass {
 
 sub _realize {
     my $self    = shift;
-    my $script  = IWL::Script->new;
     my $id      = $self->getId;
 
     $self->SUPER::_realize;
-    my $options = objToJson($self->{_options});
+    my $options = toJSON($self->{_options});
 
-    $script->setScript("Spinner.create('$id', $options);");
-    $self->_appendAfter($script);
+    $self->_appendInitScript("IWL.Spinner.create('$id', $options);");
 }
 
 # Internal
@@ -413,11 +405,11 @@ sub __init {
 
     $self->{_options} = {value => 0, from => 0, to => 100,
         stepIncrement => 1.0, pageIncrement => 10.0,
-        acceleration => 0.1, snap => 0, wrap => 0};
+        acceleration => 0.2, snap => 0, wrap => 0};
 
+    $self->{_options}{to}            = $args{to}            if exists $args{to};
+    $self->{_options}{from}          = $args{from}          if exists $args{from};
     $self->{_options}{value}         = $args{value}         if defined $args{value};
-    $self->{_options}{to}            = $args{to}            if defined $args{to};
-    $self->{_options}{from}          = $args{from}          if defined $args{from};
     $self->{_options}{stepIncrement} = $args{stepIncrement} if defined $args{stepIncrement};
     $self->{_options}{pageIncrement} = $args{pageIncrement} if defined $args{pageIncrement};
     $self->{_options}{acceleration}  = $args{acceleration}  if defined $args{acceleration};
@@ -433,7 +425,7 @@ sub __init {
 
     delete @args{qw(readonly maxlength password id class value to from
           stepIncrement pageIncrement acceleration precision mask snap wrap)};
-    $self->requiredJs('base.js', 'spinner.js');
+    $self->requiredJs('base.js', 'entry.js', 'spinner.js');
     $entry->_constructorArguments(%args);
 
     return $self;

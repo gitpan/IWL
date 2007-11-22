@@ -8,7 +8,6 @@ use strict;
 use base qw(IWL::Object IWL::RPC::Request);
 use IWL::Config qw(%IWLConfig);
 use IWL::Script;
-use JSON;
 
 =head1 NAME
 
@@ -348,6 +347,7 @@ sub appendClass {
     if (!$class_list) {
 	return $self->setAttribute(class => $class);
     } else {
+        return $self if $self->hasClass($class);
 	return $self->setAttribute(class => $class_list . ' ' . $class);
     }
 }
@@ -367,6 +367,7 @@ sub prependClass {
     if (!$class_list) {
 	return $self->setAttribute(class => $class);
     } else {
+        return $self if $self->hasClass($class);
 	return $self->setAttribute(class => $class . ' ' . $class_list);
     }
 }
@@ -385,7 +386,7 @@ sub hasClass {
     foreach (split / /, $class_list) {
 	return 1 if $_ eq $class;
     }
-    return 0;
+    return '';
 }
 
 =item B<removeClass> (B<CLASS>)
@@ -474,15 +475,16 @@ sub getTitle {
 sub _realize {
     my $self = shift;
 
+    $self->IWL::Object::_realize;
     if ($self->{_customSignals}) {
 	my $id = $self->getId;
-	my $parent = $self->__findTopParent || $self;
+	my $parent = $self->_findTopParent || $self;
 
 	if ($id) {
 	    foreach my $signal (keys %{$self->{_customSignals}}) {
-		my $expr = '';
-		$expr .= ($_ || '') . ';' foreach (@{$self->{_customSignals}{$signal}});
+                my $expr = join '; ', @{$self->{_customSignals}{$signal}};
 		if ($expr) {
+                    $signal = $self->_namespacedSignalName($signal);
 		    $parent->{_customSignalScript} = IWL::Script->new
 		      unless $parent->{_customSignalScript};
 		    $parent->{_customSignalScript}->appendScript(<<EOF);
@@ -492,7 +494,8 @@ EOF
 	    }
 	}
 	if ($parent->{_customSignalScript} && !$parent->{_customSignalScript}{_added}) {
-	    $parent->_appendAfter($parent->{_customSignalScript}) if $parent->{_customSignalScript};
+            unshift @{$parent->{_tailObjects}}, $parent->{_customSignalScript}
+              if $parent->{_customSignalScript};
 	    $parent->{_customSignalScript}{_added} = 1;
 	}
     }
@@ -512,7 +515,7 @@ sub _realizeEvents {
 
     $self->SUPER::_realizeEvents;
 
-    $self->_appendAfter(IWL::Script->new->setScript(<<EOF));
+    unshift @{$self->{_tailObjects}}, IWL::Script->new->setScript(<<EOF);
 \$('$id').prepareEvents();
 EOF
 }
@@ -522,9 +525,7 @@ sub _constructorArguments {
 
     foreach my $key (keys %args) {
 	if ($key eq 'style' && ref $args{$key} eq 'HASH') {
-	    foreach my $style (keys %{$args{$key}}) {
-		$self->setStyle($style => $args{$key}{$style});
-	    }
+            $self->setStyle(%{$args{$key}});
 	} elsif ($key eq 'class') {
 	    $self->setClass($args{$key});
 	} elsif ($key eq 'id') {
@@ -544,6 +545,15 @@ sub _registerEvent {
 
     $self->signalConnect($signal => "this.emitEvent('$event', {}, {id: this.id})");
     return $options;
+}
+
+sub _namespacedSignalName {
+    my ($self, $signal) = @_;
+    return 'iwl:' . $signal
+      if exists $self->{_customSignals}{$signal};
+    return 'dom:' . $signal
+      if $signal =~ /mouse(?:enter|leave|wheel)/;
+    return $signal;
 }
 
 # Internal
@@ -566,17 +576,6 @@ sub __setStyle {
     $self->{_style}{$attr} = $value;
 
     return $self;
-}
-
-sub __findTopParent {
-    my $self = shift;
-    my $parent = $self->{parentNode};
-
-    while ($parent) {
-	last if !$parent->{parentNode} || $parent->{parentNode}->isa('IWL::Page::Body');
-	$parent = $parent->{parentNode};
-    }
-    return $parent;
 }
 
 1;

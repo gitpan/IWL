@@ -5,13 +5,12 @@ package IWL::Tree;
 
 use strict;
 
-use IWL::Script;
 use IWL::String qw(randomize escape);
+use IWL::JSON qw(toJSON);
 
 use base qw(IWL::Table);
 
 use Scalar::Util qw(weaken);
-use JSON;
 
 =head1 NAME
 
@@ -274,17 +273,17 @@ sub prependFooter {
 sub _realize {
     my $self    = shift;
     my $cell    = IWL::Tree::Cell->new;
-    my $script  = IWL::Script->new;
-    my $b       = escape($cell->_blank_indent->getContent);
-    my $i       = escape($cell->_row_indent->getContent);
-    my $l       = escape($cell->_l_junction->getContent);
-    my $l_e     = escape($cell->_l_expand->getContent);
-    my $l_c     = escape($cell->_l_collapse->getContent);
-    my $t       = escape($cell->_t_junction->getContent);
-    my $t_e     = escape($cell->_t_expand->getContent);
-    my $t_c     = escape($cell->_t_collapse->getContent);
+    my $b       = escape($cell->_blank_indent->getJSON);
+    my $i       = escape($cell->_row_indent->getJSON);
+    my $l       = escape($cell->_l_junction->getJSON);
+    my $l_e     = escape($cell->_l_expand->getJSON);
+    my $l_c     = escape($cell->_l_collapse->getJSON);
+    my $t       = escape($cell->_t_junction->getJSON);
+    my $t_e     = escape($cell->_t_expand->getJSON);
+    my $t_c     = escape($cell->_t_collapse->getJSON);
     my $id      = $self->getId;
     my $options = {};
+    my $script;
 
     $self->prependClass('list') if $self->{_options}{list};
     $self->SUPER::_realize;
@@ -292,17 +291,17 @@ sub _realize {
     $options->{isAlternating}     = 1 if $self->{_options}{alternate};
     $options->{animate}           = 1 if $self->{_options}{animate};
     $options->{scrollToSelection} = 1 if $self->{_options}{scrollToSelection};
-    $options = objToJson($options);
+    $options = toJSON($options);
 
     $self->_set_alternate if $self->{_options}{alternate};
 
     my $images = qq({b:"$b",i:"$i",l:"$l",l_e:"$l_e",l_c:"$l_c",t:"$t",t_e:"$t_e",t_c:"$t_c"});
-    $script->prependScript("Tree.create('$id', $images, $options);");
+    $script = "IWL.Tree.create('$id', $images, $options);";
     foreach my $sortable (@{$self->{__sortables}}) {
-	$script->appendScript("\$('$id').setCustomSortable($sortable->[0], $sortable->[1])");
+	$script .= "\$('$id').setCustomSortable($sortable->[0], $sortable->[1]);";
     }
 
-    $self->_appendAfter($script);
+    $self->_appendInitScript($script);
 }
 
 sub _registerEvent {
@@ -321,13 +320,14 @@ sub _refreshEvent {
     my ($event, $handler) = @_;
 
     IWL::Object::printJSONHeader;
-    my ($list, $extras) = $handler->($event->{params})
-        if 'CODE' eq ref $handler;
+    my ($list, $extras) = ('CODE' eq ref $handler)
+      ? $handler->($event->{params})
+      : (undef, undef);
     $list = [] unless ref $list eq 'ARRAY';
 
     print '{rows: ['
            . join(',', map {'"' . escape($_->getContent) . '"'} @$list)
-           . '], extras: ' . (objToJson($extras) || 'null'). '}';
+           . '], extras: ' . (toJSON($extras) || 'null'). '}';
 }
 
 # Internal

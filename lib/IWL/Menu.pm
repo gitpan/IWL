@@ -8,9 +8,9 @@ use strict;
 use base 'IWL::List';
 
 use IWL::String qw(randomize);
+use IWL::JSON qw(toJSON);
 use IWL::Menu::Item;
 
-use JSON;
 use Locale::TextDomain qw(org.bloka.iwl);
 
 =head1 NAME
@@ -138,7 +138,7 @@ sub bindToWidget {
     my ($self, $widget, $signal) = @_;
     my $id = $widget->getId;
     return $self->_pushError(__x("Invalid id: '{ID}'", ID => $id)) unless $id;
-    push @{$self->{__bindWidgets}}, [$id => $signal];
+    push @{$self->{__bindWidgets}}, [$id => $widget->_namespacedSignalName($signal)];
 
     return $self;
 }
@@ -175,17 +175,17 @@ sub getMaxHeight {
 # Protected
 #
 sub _realize {
-    my $self = shift;
-    my $script = IWL::Script->new;
-    my $id = $self->getId;
-    my $options = objToJson($self->{_options});
+    my $self    = shift;
+    my $id      = $self->getId;
+    my $options = toJSON($self->{_options});
+    my $script;
 
     $self->SUPER::_realize;
-    $script->setScript("var menu = Menu.create('$id', $options);");
+    $script = "var menu = IWL.Menu.create('$id', $options);";
     foreach my $bind (@{$self->{__bindWidgets}}) {
-        $script->appendScript(qq{menu.bindToWidget('$bind->[0]', '$bind->[1]')});
+        $script .= qq{menu.bindToWidget('$bind->[0]', '$bind->[1]');};
     }
-    return $self->_appendAfter($script);
+    return $self->_appendInitScript($script);
 }
 
 # Internal

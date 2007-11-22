@@ -9,12 +9,11 @@ use base 'IWL::Container';
 
 use IWL::Config qw(%IWLConfig);
 use IWL::String qw(randomize);
+use IWL::JSON qw(toJSON);
 use IWL::Label;
 use IWL::Image;
-use IWL::Script;
 
 use Locale::TextDomain qw(org.bloka.iwl);
-use JSON;
 
 use constant TYPE => {
     none     => 1,
@@ -45,25 +44,37 @@ IWL::Contentbox->new ([B<%ARGS>])
 
 =item B<autoWidth>
 
-Makes the content box as wide as the content. Turns off resizing
+If true, makes the content box as wide as the content. Defaults to I<false>
 
-=item B<shadows>
+=item B<positionAtCenter>
 
-Enable shadow classes
+If true, positions the contentbox at the center of the screen. Defaults to I<false>
+
+=item B<hasShadows>
+
+If true, enable shadow classes. Defaults to I<false>
 
 =item B<modal>
 
-Make the window a modal window
+If true, makes the window a modal window. Defaults to I<false>
 
 =item B<closeModalOnClick>
 
-Makes the window close when the user clicks outside of it
+If true, makes the window close when the user clicks outside of it. Defaults to I<false>
 
 =back
 
 =head1 SIGNALS
 
 =over 4
+
+=item B<show>
+
+Fires when the contentbox has been shown
+
+=item B<hide>
+
+Fires when the contentbox has been hidden
 
 =item B<close>
 
@@ -114,11 +125,8 @@ Parameters: B<TEXT> - the text to be append as the title
 sub appendTitleText {
     my ($self, $text) = @_;
 
-    if (!$self->{__titleLabel}) {
-	$self->{__titleLabel} = IWL::Label->new;
-	$self->{__titler}->appendChild($self->{__titleLabel});
-    }
     $self->{__titleLabel}->appendText($text);
+    $self->{__titleLabel}{_ignore} = 0;
     return $self;
 }
 
@@ -351,7 +359,7 @@ Parameters: B<BOOL> - true if the contentbox should try to set it's width accord
 sub setAutoWidth {
     my ($self, $bool) = @_;
 
-    $self->{_options}{auto} = $bool ? 1 : 0;
+    $self->{_options}{autoWidth} = $bool ? 1 : 0;
 
     return $self;
 }
@@ -389,9 +397,9 @@ sub setId {
     $self->{__footerr}->setId($id . "_footerr");
     $self->{__bottom}->setId($id . "_bottom");
     $self->{__bottomr}->setId($id . "_bottomr");
+    $self->{__titleLabel}->setId($id . "_title_label");
 
     $self->{__titleImage}->setId($id . "_title_image") if $self->{__titleImage};
-    $self->{__titleLabel}->setId($id . "_title_label") if $self->{__titleLabel};
 
     return $self;
 }
@@ -400,13 +408,13 @@ sub setId {
 #
 sub _realize {
     my $self = shift;
-    my $options = objToJson($self->{_options});
+    my $options = toJSON($self->{_options});
     my $id = $self->getId;
     $self->prependClass('shadowbox') if $self->{_options}{hasShadows};
     $self->SUPER::_realize;
     $self->{__titler}->prependChild($self->{__titleImage});
     $self->__set_type;
-    $self->{__init}->setScript("Contentbox.create('$id', $options);");
+    $self->_appendInitScript("IWL.Contentbox.create('$id', $options);");
 }
 
 sub _setupDefaultClass {
@@ -420,8 +428,8 @@ sub _setupDefaultClass {
     $self->{__middle}->prependClass($self->{_defaultClass} . "_middle");
     $self->{__middler}->prependClass($self->{_defaultClass} . "_middler");
     $self->{__content}->prependClass($self->{_defaultClass} . "_content");
+    $self->{__titleLabel}->prependClass($self->{_defaultClass} . "_title_label");
     $self->{__titleImage}->prependClass($self->{_defaultClass} . "_title_image") if $self->{__titleImage};
-    $self->{__titleLabel}->prependClass($self->{_defaultClass} . "_title_label") if $self->{__titleLabel};
 
     my $hindex = $self->{__headerColorIndex};
     my $findex = $self->{__footerColorIndex};
@@ -462,7 +470,7 @@ sub __init {
     my $bottomr = IWL::Container->new;
 
     $self->{_defaultClass} = 'contentbox';
-    $self->{_options} = {auto => 0, modal => 0};
+    $self->{_options}      = {};
 
     $self->{__top}     = $top;
     $self->{__topr}    = $topr;
@@ -493,36 +501,32 @@ sub __init {
     $header->{_ignore} = 1;
     $footer->{_ignore} = 1;
 
-    if ($args{autoWidth}) {
-	$self->{_options}{auto} = 1;
-    }
+    $self->{__titleLabel} = IWL::Label->new;
+    $self->{__titleLabel}{_ignore}= 1;
+    $self->{__titler}->appendChild($self->{__titleLabel});
+
+    $self->{_options}{autoWidth}        = $args{autoWidth}        if  defined $args{autoWidth};
+    $self->{_options}{hasShadows}       = $args{hasShadows}       if  defined $args{hasShadows};
+    $self->{_options}{positionAtCenter} = $args{positionAtCenter} if  defined $args{positionAtCenter};
+
     if ($args{modal}) {
 	$self->{_options}{modal} = 1;
-	if ($args{closeModalOnClick}) {
-	    $self->{_options}{closeModalOnClick} = 1;
-	}
+        $self->{_options}{closeModalOnClick} = $args{closeModalOnClick} if defined $args{closeModalOnClick};
     }
 
     my $id = $args{id} ? $args{id} : randomize($self->{_defaultClass});
     $self->setId($id);
 
-    if ($args{shadows}) {
-	$self->setShadows(1);
-    } else {
-	$self->setShadows(0);
-    }
-    delete @args{qw(id autoWidth modal closeModalOnClick shadows)};
+    delete @args{qw(id autoWidth modal closeModalOnClick shadows positionAtCenter)};
 
-    $self->{__init} = IWL::Script->new;
     $self->setType('none');
 
     $self->{__headerColorIndex} = 0;
     $self->{__footerColorIndex} = 0;
 
-    $self->_appendAfter($self->{__init});
     $self->_constructorArguments(%args);
     $self->requiredJs('base.js', 'dist/dragdrop.js', 'resizer.js', 'contentbox.js');
-    $self->{_customSignals} = {close => []};
+    $self->{_customSignals} = {close => [], hide => [], show => []};
 
     # Callbacks
     return $self;

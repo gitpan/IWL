@@ -5,15 +5,14 @@ package IWL::Calendar;
 
 use strict;
 
-use IWL::Script;
-use IWL::String qw(randomize escape);
 use IWL::Table::Row;
 use IWL::Table::Cell;
 use IWL::Input;
+use IWL::String qw(randomize escape);
+use IWL::JSON qw(toJSON);
 
 use base qw(IWL::Table);
 
-use JSON;
 use Locale::TextDomain qw(org.bloka.iwl);
 
 my $strings = {
@@ -341,17 +340,8 @@ sub updateOnSignal {
 
     my $id = UNIVERSAL::isa($element, 'IWL::Entry') ? $element->{text}->getId : 
       UNIVERSAL::isa($element, 'IWL::Widget') ? $element->getId : $element;
+    $signal = $self->_namespacedSignalName($signal);
     push @{$self->{__updates}}, [$signal, $id, $format];
-    return $self;
-}
-
-# Overrides
-#
-sub setId {
-    my ($self, $id) = @_;
-
-    $self->SUPER::setId($id);
-
     return $self;
 }
 
@@ -359,11 +349,10 @@ sub setId {
 #
 sub _realize {
     my $self    = shift;
-    my $script  = IWL::Script->new;
     my $id      = $self->getId;
 
     $self->SUPER::_realize;
-    my $options = objToJson($self->{_options});
+    my $options = toJSON($self->{_options});
     my $translations = {};
     foreach my $key (keys %$strings) {
         $translations->{$key} = [];
@@ -375,13 +364,13 @@ sub _realize {
             }
         }
     }
-    $translations = objToJson($translations);
+    $translations = toJSON($translations);
 
-    $script->setScript("Calendar.create('$id', $options, $translations);");
+    my $script = "IWL.Calendar.create('$id', $options, $translations);";
     foreach my $update (@{$self->{__updates}}) {
-        $script->appendScript(qq|\$('$id').updateOnSignal('$update->[0]', '$update->[1]', '$update->[2]')|);
+        $script .= qq|\$('$id').updateOnSignal('$update->[0]', '$update->[1]', '$update->[2]');|;
     }
-    $self->_appendAfter($script);
+    $self->_appendInitScript($script);
 }
 
 # Internal
@@ -432,7 +421,7 @@ sub __init {
     };
 
     my $heading = IWL::Table::Row->new(class => 'calendar_heading');
-    $heading->appendCell(undef, class => 'calendar_week_number_header');
+    $heading->appendCell(undef, class => 'calendar_header_cell');
     my $month_cell = $heading->appendCell(undef, class => 'calendar_month_cell', colspan => 4);
     $month_cell->appendChild(
         IWL::Container->new(
@@ -453,7 +442,7 @@ sub __init {
             inline => 1, class => 'calendar_year_next'
         )->appendChild(IWL::Text->new('&gt;')),
     );
-    $heading->appendCell(undef, class => 'calendar_week_day_header');
+    $heading->appendCell(undef, class => 'calendar_header_cell');
 
     my $week_days = IWL::Table::Row->new(class => 'calendar_week_days');
     $week_days->appendCell(undef, class => 'calendar_week_number_header');

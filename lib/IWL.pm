@@ -28,6 +28,7 @@ use IWL::Hidden;
 use IWL::HBox;
 use IWL::Iconbox::Icon;
 use IWL::Iconbox;
+use IWL::IFrame;
 use IWL::Image;
 use IWL::Input;
 use IWL::InputButton;
@@ -62,10 +63,11 @@ use IWL::Tree::Cell;
 use IWL::Tree::Row;
 use IWL::Tree;
 use IWL::Upload;
+use IWL::VBox;
 
 use vars qw($VERSION);
 
-$VERSION = '0.51';
+$VERSION = '0.52';
 
 1;
 
@@ -75,7 +77,7 @@ IWL - A widget library for the web
 
 =head1 VERSION
 
-This documentation refers to B<IWL> version 0.51
+This documentation refers to B<IWL> version 0.52
 
 =head1 SYNOPSIS
 
@@ -125,6 +127,7 @@ The following widgets have so far been written. They have extensive documentatio
  IWL::Anchor - An anchor widget ("<a>")
  IWL::Break - A break widget ("<br>")
  IWL::Button - A graphic button widget
+ IWL::Calendar - a calendar widget
  IWL::Canvas - The html5 canvas element ("<canvas>")
  IWL::Checkbox - A checkbox widget (checkbox + text)
  IWL::Combo - A combobox widget ("<select>")
@@ -161,6 +164,7 @@ The following widgets have so far been written. They have extensive documentatio
  IWL::RPC - A helper class for ajax connections and cgi parameters
  IWL::Script - A script object ("<script>")
  IWL::Slider - A slider widget
+ IWL::Spinner-  A spinner widget
  IWL::Stash - A stash class for form information encapsulation
  IWL::Stock - A stock object, for buttons and images
  IWL::Style - A style object ("<style>")
@@ -185,7 +189,6 @@ In order to actually use the library, the javascript and css files will also hav
 
 =head1 DEPENDENCIES
 
-  JSON
   Scalar::Util
   Locale::Messages
   Locale::TextDomain
@@ -209,9 +212,6 @@ In order to actually use the library, the javascript and css files will also hav
  - In Internet explorer, floats will escape a container with scrollbars,
    if the positioning on the container is static, or the floats have a 
    relative positioning
- - The JSON library used in IWL has a bug where it will incorrectly unescape
-   double quotes. It is preferred to escape potentially dangerous strings
-   beforehand, or not use JSON at all
 
 =head1 AUTHOR
 

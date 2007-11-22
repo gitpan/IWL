@@ -9,6 +9,8 @@ use base qw(Exporter);
 use vars qw(@EXPORT_OK);
 @EXPORT_OK = qw(updaterCallback);
 
+use IWL::JSON qw(toJSON);
+
 =head1 NAME
 
 IWL::Ajax - helper functions for prototypejs's Ajax object
@@ -50,12 +52,12 @@ A javascript function to be called after the update takes place
 sub updaterCallback {
     my ($id, $url, %options) = @_;
     return unless $id && $url;
-    my $options = 'onException: exceptionHandler';
+    my $options = 'onException: IWL.exceptionHandler';
 
     $options .= ",onComplete: " . $options{onComplete} if $options{onComplete};
     if ($options{parameters}) {
 	if (ref $options{parameters} eq 'HASH') {
-	    $options .= ",parameters:" . objToJson($options{parameters});
+	    $options .= ",parameters:" . toJSON($options{parameters});
 	} elsif (!ref $options{parameters}) {
 	    $options .= ",parameters:{" . $options{parameters} . "}";
 	}

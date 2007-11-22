@@ -1,4 +1,4 @@
-IWL version 0.51
+IWL version 0.52
 ================
 
 The IWL includes several widgets with which consistent web pages can be built
@@ -27,7 +27,6 @@ DEPENDENCIES
 
 This module requires these other modules and libraries:
 
-  JSON
   Scalar::Util
   Locale::Messages
   Locale::TextDomain

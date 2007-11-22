@@ -1,4 +1,4 @@
-// script.aculo.us sound.js v1.8.0_pre1, Tue Sep 18 11:46:02 +0300 2007
+// script.aculo.us sound.js v1.8.0, Tue Nov 06 15:01:40 +0300 2007
 
 // Copyright (c) 2005-2007 Thomas Fuchs (http://script.aculo.us, http://mir.aculo.us)
 //

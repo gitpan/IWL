@@ -5,11 +5,11 @@ package IWL::Tooltip;
 
 use strict;
 
-use base qw(IWL::Script IWL::Widget);
+use base qw(IWL::Widget);
 
 use IWL::String qw(escape randomize);
+use IWL::JSON qw(toJSON);
 
-use JSON;
 use Locale::TextDomain qw(org.bloka.iwl);
 
 =head1 NAME
@@ -18,7 +18,6 @@ IWL::Tooltip - a tooltip widget
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Script> -> L<IWL::Tooltip>
 L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Tooltip>
 
 =head1 DESCRIPTION
@@ -40,6 +39,10 @@ True, if the tooltip should appear in the center of the bound element
 =item B<followMouse>
 
 True, if the tooltip should follow the mouse
+
+=item B<parent>
+
+The parent element of the tooltip
 
 =back
 
@@ -73,10 +76,10 @@ Note: The tooltip and widget ids must not be changed after this method is called
 sub bindToWidget {
     my ($self, $widget, $signal, $toggle) = @_;
     my $to = $widget->getId;
-    return $self->_pushError(__x("Invalid id: '{ID}'", ID => $to)) unless $to;
+    return $self->_pushError(__("Invalid id")) unless $to;
 
     $self->{__bound}       = $to;
-    $self->{__bindSignal}  = $signal;
+    $self->{__bindSignal}  = $widget->_namespacedSignalName($signal);
     $self->{__boundToggle} = $toggle ? 1 : 0;
     return $self;
 }
@@ -97,7 +100,7 @@ sub bindHideToWidget {
     return $self->_pushError(__x("Invalid id: '{ID}'", ID => $to)) unless $to;
 
     $self->{__boundHide} = $to;
-    $self->{__bindHideSignal} = $signal;
+    $self->{__bindHideSignal} = $widget->_namespacedSignalName($signal);
     return $self;
 }
 
@@ -152,39 +155,45 @@ sub hidingCallback {
 # Protected
 #
 sub _realize {
-    my $self = shift;
-    my $id   = $self->getId;
+    my $self       = shift;
+    my $id         = $self->getId;
+    my $visibility = $self->getStyle('visibility');
     my $options;
 
-    $self->{__content} = escape($self->{__contentObject}->getContent) if $self->{__contentObject};
-
-    $self->{_options}{hidden} = 1;
-
-    $options = objToJson($self->{_options});
-    $self->setId($id . '_script');
     $self->SUPER::_realize;
-    $self->setScript("Tooltip.create('$id', $options);");
-    $self->appendScript("\$('$id').setContent('$self->{__content}')") if $self->{__content};
-    $self->appendScript("\$('$id').bindToWidget('$self->{__bound}', '$self->{__bindSignal}', $self->{__boundToggle});")
-      if $self->{__bound};
-    $self->appendScript("\$('$id').bindHideToWidget('$self->{__boundHide}', '$self->{__bindHideSignal}');")
-      if $self->{__boundHide};
+
+    $self->{__content} = escape($self->{__contentObject}->getContent)
+      if $self->{__contentObject};
+    $self->{_options}{parent} = UNIVERSAL::isa($self->{_options}{parent}, 'IWL::Widget')
+      ? $self->{_options}{parent}->getId : $self->{_options}{parent};
+    $self->{_options}{hidden} = 1;
+    $self->{_options}{content} = $self->{__content} if $self->{__content};
+    $self->{_options}{bind} =
+      [$self->{__bound}, $self->{__bindSignal}, $self->{__boundToggle}] if $self->{__bound};
+    $self->{_options}{bindHide} =
+      [$self->{__boundHide}, $self->{__bindHideSignal}] if $self->{__boundHide};
+
+    $self->{_options}{visibility} = $visibility if $visibility;
+    $self->setStyle(visibility => 'hidden');
+    $options = toJSON($self->{_options});
+    $self->_appendInitScript("IWL.Tooltip.create('$id', $options);");
 }
 
 # Internal
 #
 sub __init {
     my ($self, %args) = @_;
-    $self->{_defaultClass} = 'tooltip';
 
-    $self->{_options} = {};
+    $self->{_options} = {style => {}};
     $self->{_options}{centerOnElement} = $args{centerOnElement} ? 1 : 0 if defined $args{centerOnElement};
     $self->{_options}{followMouse}     = $args{followMouse}     ? 1 : 0 if defined $args{followMouse};
+    $self->{_options}{parent}          = $args{parent}                  if defined $args{parent};
 
+    $self->{_defaultClass} = 'tooltip';
     $args{id} ||= randomize($self->{_defaultClass});
-    $self->{_tag} = "script";
+    $self->{_tag} = "div";
 
-    delete @args{qw(centerOnElement followMouse)};
+    delete @args{qw(centerOnElement followMouse parent)};
     $self->_constructorArguments(%args);
     $self->requiredJs('base.js', 'tooltip.js');
 

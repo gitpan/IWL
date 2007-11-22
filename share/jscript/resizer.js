@@ -26,25 +26,27 @@ var Resizer = Class.create((function() {
       this.handlerHolder = new Element('div',
         {className: this.options.className + '_handler_holder'});
 
-      this.outline.setStyle({opacity: this.options.outlineOpacity, visibility: 'hidden'});
-      this.handlerHolder.setStyle({backgroundColor: 'transparent', visibility: 'hidden'});
-
       this.element.appendChild(this.outline);
       this.element.appendChild(this.handlerHolder);
+
+      this.outline.setStyle({opacity: this.options.outlineOpacity, visibility: 'hidden'});
+      this.handlerHolder.setStyle({backgroundColor: 'transparent', visibility: 'hidden'});
     }
 
-    this.handlers = {};
+    this.handlers = new Hash;
 
     createHandles.call(this, eventMouseDown);
     var ok = true;
 
     this.options.togglers.each(function(toggler) {
-        toggler = $(toggler);
-        if (!toggler)
-          return;
-        toggler.observe("mousedown", eventSelect);
-        ok = false;
-    });
+      toggler = $(toggler);
+      if (!toggler)
+        return;
+      toggler.observe("mousedown", eventSelect);
+      if (this.handlerHolder)
+        this.handlerHolder.observe("mousedown", eventSelect);
+      ok = false;
+    }.bind(this));
     Event.observe(document, "mouseup"  , eventMouseUp);
     Event.observe(document, "mousemove", eventMouseMove);
     if (ok)
@@ -70,33 +72,32 @@ var Resizer = Class.create((function() {
   }
 
   function destroyHandles() {
-    for (var h in this.handlers) {
-      if (h.remove)
-        h.remove();
-    }
-    this.handlers = {};
+    this.handlers.each(function(pair) {
+      if (pair.value.remove)
+        pair.value.remove()
+    });
+    this.handlers = new Hash;
   }
 
   function createHandle(type, observer) {
-    if (this.handlers[type]) return;
+    if (this.handlers.keys().include(type)) return;
     var handle = new Element('div', {
         className: this.options.className + '_handle '
           + this.options.className + '_handle_' + type,
         style: 'visibility: hidden;'
     });
     if (this.handlerHolder)
-      this.handlers[type] = this.handlerHolder.appendChild(handle);
+      this.handlers.set(type, this.handlerHolder.appendChild(handle));
     else
-      this.handlers[type] = this.element.appendChild(handle);
+      this.handlers.set(type, this.element.appendChild(handle));
     handle.type = type;
     handle.observe('mousedown', observer);
   }
   
   function toggleHandles() {
-    for (var h in this.handlers) {
-      var v = this.handlers[h].getStyle('visibility');
-      this.handlers[h].setStyle({visibility: v == 'hidden' ? 'visible' : 'hidden'});
-    }
+    this.handlers.each(function(pair) {
+      pair.value.setStyle({visibility: pair.value.getStyle('visibility') == 'hidden' ? 'visible' : 'hidden'});
+    });
     if (this.handlerHolder) {
       var v = this.handlerHolder.getStyle('visibility');
       this.handlerHolder.setStyle({visibility: v == 'hidden' ? 'visible' : 'hidden'});
@@ -154,8 +155,7 @@ var Resizer = Class.create((function() {
 
     if (this.resizeType.indexOf('t') >= 0) {
       if (this.outline) {
-        var outlineTop = parseInt(this.outline.style.top);
-        if (isNaN(outlineTop)) outlineTop = 0;
+        var outlineTop = parseFloat(this.outline.style.top) || 0;
         this.outline.style.top  = dY + outlineTop + 'px';
       }
 
@@ -169,8 +169,7 @@ var Resizer = Class.create((function() {
 
     if (this.resizeType.indexOf('l') >= 0) {
       if (this.outline) {
-        var outlineLeft = parseInt(this.outline.style.left);
-        if (isNaN(outlineLeft)) outlineLeft = 0;
+        var outlineLeft = parseFloat(this.outline.style.left) || 0;
         this.outline.style.left = dX + outlineLeft + 'px';
       }
 
@@ -210,7 +209,14 @@ var Resizer = Class.create((function() {
     }
   }
 
-  function selectElement(event, outlineSelect) {
+  function selectElement(event) {
+    if (this.handlerHolder == event.element()
+        && this.handlerHolder.style.visibility == 'visible'
+        && this.options.togglers.any()) {
+      toggleHandles.call(this);
+      return;
+    }
+
     var element = event.element();
     if (element.hasClassName(this.options.className + '_handle'))
       return;
@@ -223,10 +229,8 @@ var Resizer = Class.create((function() {
     var dimensions = this.element.getDimensions();
     this.elementPosition.w = dimensions.width;
     this.elementPosition.h = dimensions.height;
-    this.elementPosition.x = parseInt(this.element.style.left);
-    this.elementPosition.y = parseInt(this.element.style.top);
-    if (isNaN(this.elementPosition.x)) this.elementPosition.x = 0;
-    if (isNaN(this.elementPosition.y)) this.elementPosition.y = 0;
+    this.elementPosition.x = parseFloat(this.element.style.left) || 0;
+    this.elementPosition.y = parseFloat(this.element.style.top)  || 0;
 
     if (this.outline) {
       this.outline.style.width = this.handlerHolder.style.width =

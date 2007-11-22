@@ -1,10 +1,9 @@
 // vim: set autoindent shiftwidth=4 tabstop=8:
 /**
- * @class Menu is a class for adding menus
- * @extends Widget
+ * @class IWL.Menu is a class for adding menus
+ * @extends IWL.Widget
  * */
-var Menu = {};
-Object.extend(Object.extend(Menu, Widget), (function () {
+IWL.Menu = Object.extend(Object.extend({}, IWL.Widget), (function () {
     function bindPop(event, parentItem) {
         if (parentItem)
             this.parentItem = $(parentItem);
@@ -12,8 +11,7 @@ Object.extend(Object.extend(Menu, Widget), (function () {
             this.popDown();
         else
             this.popUp();
-        focused_widget = this.id;
-        Event.extend(event);
+        IWL.Focus.current = this;
         Event.stop(event);
         return this;
     }
@@ -47,8 +45,9 @@ Object.extend(Object.extend(Menu, Widget), (function () {
             this.setStyle({width: new_width + 'px', height: this.options.maxHeight + 'px', overflowY: 'scroll'});
     }
 
-    function focus(id) {
-        return (function() {focused_widget = id}).defer();
+    function focus(element) {
+        if (!(element = $(element))) return;
+        return (function() {IWL.Focus.current = element}).defer();
     }
 
     function keyEventsCB(event) {
@@ -67,7 +66,7 @@ Object.extend(Object.extend(Menu, Widget), (function () {
                     if (this.parentMenu.hasClassName('menubar'))
                         this.parentMenu.selectItem(
                             this.parentMenu.getPrevMenuItem() || this.parentMenu.menuItems.last());
-                    focus(this.parentMenu.id)
+                    focus(this.parentMenu)
                 }
             }
         } else if (key_code == Event.KEY_UP)  {
@@ -77,7 +76,7 @@ Object.extend(Object.extend(Menu, Widget), (function () {
                 var submenu = this.currentItem.submenu;
                 if (!submenu) return;
                 submenu.selectItem(submenu.menuItems.last());
-                focus(submenu.id)
+                focus(submenu)
             } else {
                 var select = this.getPrevMenuItem() || this.menuItems.last();
                 this.selectItem(select);
@@ -93,11 +92,11 @@ Object.extend(Object.extend(Menu, Widget), (function () {
                 if (this.currentItem && this.currentItem.submenu) {
                     var submenu = this.currentItem.submenu;
                     submenu.selectItem(submenu.menuItems[0]);
-                    focus(submenu.id)
+                    focus(submenu)
                 } else if (this.parentMenu && this.parentMenu.hasClassName('menubar')) {
                     this.parentMenu.selectItem(
                         this.parentMenu.getNextMenuItem() || this.parentMenu.menuItems[0]);
-                    focus(this.parentMenu.id)
+                    focus(this.parentMenu)
                 }
             }
         } else if (key_code == Event.KEY_DOWN) {
@@ -107,7 +106,7 @@ Object.extend(Object.extend(Menu, Widget), (function () {
                 var submenu = this.currentItem.submenu;
                 if (!submenu) return;
                 submenu.selectItem(submenu.menuItems[0]);
-                focus(submenu.id)
+                focus(submenu)
             } else {
                 var select = this.getNextMenuItem() || this.menuItems[0];
                 this.selectItem(select);
@@ -169,7 +168,7 @@ Object.extend(Object.extend(Menu, Widget), (function () {
                     var dims = this.getDimensions();
                     this.setStyle({width: dims.width + 'px', height: dims.height + 'px'});
                 }
-                removeQuirks.call(this);
+//                removeQuirks.call(this);
                 this.positioned = true;
             }
             return this.setStyle({visibility: 'visible'});
@@ -188,7 +187,7 @@ Object.extend(Object.extend(Menu, Widget), (function () {
             this.style.display = 'none';
             if (this.parentMenu) {
                 this.parentMenu.poppedChild = null;
-                focus(this.parentMenu.id);
+                focus(this.parentMenu);
             }
             this.popped = false;
             return this;
@@ -199,10 +198,9 @@ Object.extend(Object.extend(Menu, Widget), (function () {
          * */
         toggle: function() {
             if (this.popped)
-                this.popDown();
+                return this.popDown();
             else
-                this.popUp();
-            return this;
+                return this.popUp();
         },
         /**
          * Pops down the menu and all its child menus.
@@ -222,7 +220,8 @@ Object.extend(Object.extend(Menu, Widget), (function () {
          * */
         bindToWidget: function(element, signal) {
             if (!(element = $(element))) return;
-            return element.signalConnect(signal, bindPop.bindAsEventListener(this, element));
+            element.signalConnect(signal, bindPop.bindAsEventListener(this, element));
+            return this;
         },
         /**
          * Selects the given menu item 
@@ -253,7 +252,7 @@ Object.extend(Object.extend(Menu, Widget), (function () {
         },
         /**
          * Returns the previous menu item
-         * @param {MenuItem} item The reference menu item. If none is given, the current one is used.
+         * @param {IWL.Menu.Item} item The reference menu item. If none is given, the current one is used.
          * @returns The previous menu item
          * */
         getPrevMenuItem: function(item) {
@@ -269,7 +268,7 @@ Object.extend(Object.extend(Menu, Widget), (function () {
         },
         /**
          * Returns the next menu item
-         * @param {MenuItem} item The reference menu item. If none is given, the current one is used.
+         * @param {IWL.Menu.Item} item The reference menu item. If none is given, the current one is used.
          * @returns The next menu item
          * */
         getNextMenuItem: function(item) {
@@ -311,7 +310,7 @@ Object.extend(Object.extend(Menu, Widget), (function () {
                 if ($_.tagName == 'LI'
                     && ($_.hasClassName('menubar_item')
                         || $_.hasClassName('menu_item')))
-                    this.menuItems.push(MenuItem.create($_, this));
+                    this.menuItems.push(IWL.Menu.Item.create($_, this));
             }.bind(this));
 
             var paren = this.up();
@@ -335,7 +334,7 @@ Object.extend(Object.extend(Menu, Widget), (function () {
                 if (paren === document) break;
                 paren = paren.up();
             }
-            registerFocus(this);
+            this.registerFocus();
             Event.observe(window, 'click', function(event) {
                 if (!Event.checkElement(event, this))
                     this.popDown();
@@ -344,19 +343,18 @@ Object.extend(Object.extend(Menu, Widget), (function () {
                 if (!Event.checkElement(event, this))
                     this.popDown();
             }.bind(this));
-            keyLogEvent(this, keyEventsCB.bindAsEventListener(this));
+            this.keyLogger(keyEventsCB.bindAsEventListener(this));
         }
     }
 })());
 
 /**
- * @class MenuItem is a class for menu items
- * @extends Widget
+ * @class IWL.Menu.Item is a class for menu items
+ * @extends IWL.Widget
  * */
-var MenuItem = {};
-Object.extend(Object.extend(MenuItem, Widget), (function () {
+IWL.Menu.Item = Object.extend(Object.extend({}, IWL.Widget), (function () {
     function toggleCheckItem() {
-	if (!this.hasClassName('menu_check_item')) return;
+	if (!this.hasClassName('menu_check_item') || this.isNotEnabled()) return;
 	if (this.hasClassName('menu_check_item_checked')) {
 	    this.checked = false;
 	    this.removeClassName('menu_check_item_checked');
@@ -364,14 +362,14 @@ Object.extend(Object.extend(MenuItem, Widget), (function () {
 	    this.checked = true;
 	    this.addClassName('menu_check_item_checked');
 	}
-	this.emitSignal('change');
+	this.emitSignal('iwl:change');
 	return this;
     }
 
     function toggleRadioItem() {
 	var paren = this.up();
 	
-	if (!this.hasClassName('menu_radio_item')) return;
+        if (!this.hasClassName('menu_radio_item') || this.isNotEnabled()) return;
 	if (this.hasClassName('menu_radio_item_checked')) return;
 	paren.childElements().each(function($_) {
 	    if (this.name) {
@@ -390,7 +388,7 @@ Object.extend(Object.extend(MenuItem, Widget), (function () {
 	}.bind(this));
 	this.checked = true;
 	this.addClassName('menu_radio_item_checked');
-	this.emitSignal('change');
+	this.emitSignal('iwl:change');
 	return this;
     }
 
@@ -450,12 +448,12 @@ Object.extend(Object.extend(MenuItem, Widget), (function () {
     return {
         /**
          * Sets whether the menu item is selected
-         * @param {Boolean} selected True if the item should be selected
+         * @param {Boolean} select True if the item should be selected
          * @returns The object
          * */
-        setSelected: function(selected) {
+        setSelected: function(select) {
             if (this.isNotEnabled()) return;
-            if (selected) {
+            if (select) {
                 if (this.isSelected()) return;
                 if (this.menu.currentItem)
                     this.menu.currentItem.setSelected(false);
@@ -467,7 +465,7 @@ Object.extend(Object.extend(MenuItem, Widget), (function () {
                 if (this.submenu)
                     this.submenu.popUp();
 
-                this.emitSignal('select');
+                this.emitSignal('iwl:select');
             } else {
                 if (!this.isSelected()) return;
                 if (this.menu.currentItem == this)
@@ -476,7 +474,7 @@ Object.extend(Object.extend(MenuItem, Widget), (function () {
                 if (this.submenu)
                     this.submenu.popDown();
 
-                this.emitSignal('unselect');
+                this.emitSignal('iwl:unselect');
             }
             return this;
         },
@@ -491,13 +489,11 @@ Object.extend(Object.extend(MenuItem, Widget), (function () {
         },
         /**
          * Sets whether the menu item is disabled 
-         * @param {Boolean} selected True if the item should be disabled 
+         * @param {Boolean} disable True if the item should be disabled 
          * @returns The object
          * */
-        setDisabled: function(selected) {
-            this.removeClassName('menu_item_disabled');
-            if (selecte)
-                this.addClassName('menu_item_disabled');
+        setDisabled: function(disable) {
+            disable ? this.addClassName('menu_item_disabled') : this.removeClassName('menu_item_disabled');
             return this;
         },
         /**
@@ -542,8 +538,9 @@ Object.extend(Object.extend(MenuItem, Widget), (function () {
          * @returns The object
          * */
         activate: function() {
-            this.menu.emitSignal('menu_item_activate', this);
-            this.emitSignal('activate');
+            if (this.isNotEnabled()) return;
+            this.menu.emitSignal('iwl:menu_item_activate', this);
+            return this.emitSignal('iwl:activate');
         },
 
         _init: function(id, menu) {
@@ -561,3 +558,7 @@ Object.extend(Object.extend(MenuItem, Widget), (function () {
         }
     }
 })());
+
+/* Deprecated */
+var Menu = IWL.Menu;
+var MenuItem = IWL.Menu.Item;

@@ -9,11 +9,9 @@ use base 'IWL::Container';
 
 use IWL::String qw(randomize escape);
 use IWL::Button;
-use IWL::Script;
 use IWL::Break;
 use IWL::Druid::Page;
 
-use JSON;
 use Locale::TextDomain qw(org.bloka.iwl);
 
 =head1 NAME
@@ -127,7 +125,6 @@ sub setId {
 #
 sub _realize {
     my $self     = shift;
-    my $script   = IWL::Script->new;
     my $id       = $self->getId;
     my $selected = 0;
 
@@ -136,9 +133,7 @@ sub _realize {
         last if $selected = $page->isSelected;
     }
     $self->{__pages}[0]->setSelected(1) if !$selected;
-    $script->setScript(
-        "Druid.create('$id', '" . escape($self->{__finishText}) . "')");
-    $self->_appendAfter($script);
+    $self->_appendInitScript("IWL.Druid.create('$id', '" . escape($self->{__finishText}) . "')");
 }
 
 sub _setupDefaultClass {
@@ -147,6 +142,9 @@ sub _setupDefaultClass {
     $self->SUPER::prependClass($self->{_defaultClass});
     $self->{__content}->prependClass($self->{_defaultClass} . '_content');
     $self->{__buttonContainer}->prependClass($self->{_defaultClass} . '_button_container');
+    $self->{__backButton}->prependClass($self->{_defaultClass} . '_back_button');
+    $self->{__nextButton}->prependClass($self->{_defaultClass} . '_next_button');
+    $self->{__okButton}->prependClass($self->{_defaultClass} . '_ok_button');
     return $self;
 }
 
@@ -156,7 +154,7 @@ sub __init {
     my ($self, %args) = @_;
     my $content     = IWL::Container->new;
     my $back_button =
-      IWL::Button->newFromStock('IWL_STOCK_BACK', size => 'medium');
+      IWL::Button->newFromStock('IWL_STOCK_PREVIOUS', size => 'medium');
     my $next_button =
       IWL::Button->newFromStock('IWL_STOCK_NEXT', size => 'medium');
     my $ok_button =

@@ -1,22 +1,25 @@
 // vim: set autoindent shiftwidth=4 tabstop=8:
 /**
- * @class Spinner is a class for adding entry spinners 
- * @extends Widget
+ * @class IWL.Spinner is a class for adding entry spinners 
+ * @extends IWL.Widget
  * */
-var Spinner = {};
-Object.extend(Object.extend(Spinner, Widget), (function() {
-    var periodical_options = $H({border: 0.005, frequency: 0.5});
+IWL.Spinner = Object.extend(Object.extend({}, IWL.Widget), (function() {
+    var periodical_options = {border: 0.005, frequency: 0.5};
 
     function keyEventsCB(event) {
         var key_code = Event.getKeyCode(event);
     }
 
     function connectSpinnerSignals() {
+        mouseOutEvent = spinnerMouseOut.bindAsEventListener(this);
+
         this.leftSpinner.signalConnect('mousedown', leftSpinnerMouseDown.bindAsEventListener(this));
         this.leftSpinner.signalConnect('mouseup', leftSpinnerMouseUp.bindAsEventListener(this));
+        this.leftSpinner.signalConnect('mouseout', mouseOutEvent);
 
         this.rightSpinner.signalConnect('mousedown', rightSpinnerMouseDown.bindAsEventListener(this));
         this.rightSpinner.signalConnect('mouseup', rightSpinnerMouseUp.bindAsEventListener(this));
+        this.rightSpinner.signalConnect('mouseout', mouseOutEvent);
 
         this.input.signalConnect('blur', inputBlur.bindAsEventListener(this));
         this.input.signalConnect('focus', inputFocus.bindAsEventListener(this));
@@ -24,7 +27,7 @@ Object.extend(Object.extend(Spinner, Widget), (function() {
         this.input.signalConnect('keydown', inputKeyDown.bindAsEventListener(this));
         this.input.signalConnect('keyup', inputKeyUp.bindAsEventListener(this));
 
-        this.signalConnect('mousedown', spinnerMouseDown.bindAsEventListener(this));
+        this.input.signalConnect('mousedown', spinnerMouseDown.bindAsEventListener(this));
         Event.observe(document, "mousemove", documentMouseMove.bindAsEventListener(this));
         Event.observe(document, "mouseup", documentMouseUp.bindAsEventListener(this));
     }
@@ -36,19 +39,14 @@ Object.extend(Object.extend(Spinner, Widget), (function() {
         }
 
         this.spinDirection = 'left';
-        this.startSpinTime = new Date;
         this.speed = event.isLeftClick() ? event.shiftKey ?
             this.options.pageIncrement : this.options.stepIncrement : this.options.pageIncrement;
-        spinnerPeriodical.call(this);
         this.periodical = new PeriodicalAccelerator(spinnerPeriodical.bind(this),
-            periodical_options.merge({acceleration: this.options.acceleration}));
+            Object.extend(periodical_options, {acceleration: this.options.acceleration}));
+        spinnerPeriodical.call(this);
     }
     function leftSpinnerMouseUp(event) {
-        if (this.periodical) {
-            this.periodical.stop();
-            this.periodical = null;
-        }
-        this.startSpinTime = null;
+        stopSpinning.call(this);
     }
 
     function rightSpinnerMouseDown(event) {
@@ -58,34 +56,41 @@ Object.extend(Object.extend(Spinner, Widget), (function() {
         }
 
         this.spinDirection = 'right';
-        this.startSpinTime = new Date;
         this.speed = event.isLeftClick() ? event.shiftKey ?
             this.options.pageIncrement : this.options.stepIncrement : this.options.pageIncrement;
-        spinnerPeriodical.call(this);
         this.periodical = new PeriodicalAccelerator(spinnerPeriodical.bind(this),
-            periodical_options.merge({acceleration: this.options.acceleration}));
+            Object.extend(periodical_options, {acceleration: this.options.acceleration}));
+        spinnerPeriodical.call(this);
     }
     function rightSpinnerMouseUp(event) {
+        stopSpinning.call(this);
+    }
+
+    function spinnerMouseOut(event) {
+        if (this.dragging) return;
+        stopSpinning.call(this);
+    }
+
+    function stopSpinning() {
         if (this.periodical) {
             this.periodical.stop();
             this.periodical = null;
         }
-        this.startSpinTime = null;
     }
 
     function spinnerPeriodical(pe) {
-        var new_value = this.spinDirection == 'left' ? this.value - this.speed : this.value + this.speed;
+        var new_value = this.spinDirection == 'left' ? this.preciseValue - this.speed : this.preciseValue + this.speed;
         this.setValue(new_value);
     }
 
     function inputBlur(event) {
         this.input.removeClassName('spinner_text_selected');
-        this.setValue(this.value);
+        this.setValue(this.preciseValue);
     }
     function inputFocus(event) {
         this.input.addClassName('spinner_text_selected');
-        var value = this.value;
-        if (!isNaN(this.options.precision))
+        var value = this.preciseValue;
+        if (Object.isNumber(this.options.precision) && !isNaN(this.options.precision))
             value = value.toFixed(this.options.precision);
         this.input.value = value;
     }
@@ -96,7 +101,6 @@ Object.extend(Object.extend(Spinner, Widget), (function() {
         switch (Event.getKeyCode(event)) {
             case Event.KEY_RETURN:
                 this.setValue(value);
-                this.emitSignal("change");
             case Event.KEY_ESC:
                 this.input.blur();
                 break;
@@ -113,12 +117,11 @@ Object.extend(Object.extend(Spinner, Widget), (function() {
             }
 
             this.spinDirection = key_code == Event.KEY_DOWN ? 'left' : 'right';
-            this.startSpinTime = new Date;
             this.speed = event.shiftKey
                 ? this.options.pageIncrement : this.options.stepIncrement;
-            inputPeriodical.call(this);
             this.periodical = new PeriodicalAccelerator(inputPeriodical.bind(this),
-                periodical_options.merge({acceleration: this.options.acceleration}));
+                Object.extend(periodical_options, {acceleration: this.options.acceleration}));
+            inputPeriodical.call(this);
         }
     }
     function inputKeyUp(event) {
@@ -128,7 +131,6 @@ Object.extend(Object.extend(Spinner, Widget), (function() {
                 this.periodical.stop();
                 this.periodical = null;
             }
-            this.startSpinTime = null;
         }
     }
 
@@ -137,14 +139,14 @@ Object.extend(Object.extend(Spinner, Widget), (function() {
         new_value = this.spinDirection == 'left' ? new_value - this.speed : new_value + this.speed;
         new_value = wrapValue.call(this, new_value);
         if (!isNaN(new_value)) {
-            if (!isNaN(this.options.precision))
+            if (Object.isNumber(this.options.precision) && !isNaN(this.options.precision))
                 new_value = new_value.toFixed(this.options.precision);
             this.input.value = new_value;
         }
     }
 
     function wrapValue(number) {
-        if (typeof number != 'number' || isNaN(number)) {
+        if (!Object.isNumber(number) || isNaN(number)) {
             if (this.options.snap)
                 number = parseFloat(number) || 0;
             else return NaN;
@@ -152,15 +154,15 @@ Object.extend(Object.extend(Spinner, Widget), (function() {
         if (isNaN(number)) return;
 
         if (this.options.wrap) {
-            while (number < this.options.from)
-                number = this.options.to + number + 1 - this.options.from;
-            while (number > this.options.to)
-                number = this.options.from + number - 1 - this.options.to;
+            while (number < this.from)
+                number = this.to + number + 1 - this.from;
+            while (number > this.to)
+                number = this.from + number - 1 - this.to;
         } else {
-            if (number < this.options.from)
-                number = this.options.from;
-            else if (number > this.options.to)
-                number = this.options.to;
+            if (number < this.from)
+                number = this.from;
+            else if (number > this.to)
+                number = this.to;
         }
 
         return number;
@@ -178,13 +180,12 @@ Object.extend(Object.extend(Spinner, Widget), (function() {
         event.shiftKey ? this.options.pageIncrement : this.options.stepIncrement;
         var delta = (x - this.dragStartPosition) * offset;
         this.dragStartPosition = x;
-        this.setValue(this.value + delta);
+        this.setValue(this.preciseValue + delta);
     }
 
     function documentMouseUp(event) {
         this.dragging = false;
         this.dragStartPosition = 0;
-        this.input.blur();
     }
 
     return {
@@ -197,11 +198,12 @@ Object.extend(Object.extend(Spinner, Widget), (function() {
             number = wrapValue.call(this, number);
             if (isNaN(number)) return;
 
-            this.value = number;
-            if (!isNaN(this.options.precision))
+            this.preciseValue = number;
+            if (Object.isNumber(this.options.precision) && !isNaN(this.options.precision))
                 number = number.toFixed(this.options.precision);
+            this.value = parseFloat(number);
             this.input.value = this.mask ? this.mask.evaluate({number: number}) : number;
-            return this;
+            return this.emitSignal("iwl:change");
         },
         /**
          * @returns The current value of the spinner 
@@ -218,29 +220,35 @@ Object.extend(Object.extend(Spinner, Widget), (function() {
                 to: 100,
                 stepIncrement: 1.0,
                 pageIncrement: 10.0,
-                acceleration: 0.1,
+                acceleration: 0.2,
                 snap: false,
                 wrap: false,
                 precision: false,
                 mask: null
             }, arguments[1] || {});
-            this.input = this.getElementsBySelector('.spinner_text')[0];
-            this.leftSpinner = this.getElementsBySelector('.spinner_left')[0];
-            this.rightSpinner = this.getElementsBySelector('.spinner_right')[0];
-            this.range = $R(parseFloat(this.options.from) || 0, parseFloat(this.options.to) || 100);
+            this.input = this.select('.spinner_text')[0];
+            this.leftSpinner = this.select('.spinner_left')[0];
+            this.rightSpinner = this.select('.spinner_right')[0];
             this.speed = this.options.stepIncrement;
             this.mask = null;
             this.dragging = false;
+            this.from = parseFloat(this.options.from);
+            this.to = parseFloat(this.options.to);
+            if (isNaN(this.from)) this.from = -Infinity;
+            if (isNaN(this.to)) this.to = Infinity;
             if (this.options.mask && this.options.mask.match(/#\{number\}/))
                 this.mask = new Template(this.options.mask);
 
             this.setValue(this.options.value);
 
             connectSpinnerSignals.call(this);
-            keyLogEvent(this, keyEventsCB.bindAsEventListener(this));
-            registerFocus(this);
+            this.keyLogger(keyEventsCB.bindAsEventListener(this));
+            this.registerFocus();
 
-            this.emitSignal('load');
+            this.emitSignal('iwl:load');
         }
     }
 })());
+
+/* Deprecated */
+var Spinner = IWL.Spinner;

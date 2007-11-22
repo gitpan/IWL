@@ -7,11 +7,11 @@ use strict;
 
 use IWL::Script;
 use IWL::String qw(randomize escape);
-use Locale::TextDomain qw(org.bloka.iwl);
+use IWL::JSON qw(toJSON);
 
 use base qw(IWL::Container);
 
-use JSON;
+use Locale::TextDomain qw(org.bloka.iwl);
 use Scalar::Util qw(weaken);
 
 =head1 NAME
@@ -132,22 +132,21 @@ sub setId {
 #
 sub _realize {
     my $self    = shift;
-    my $script  = IWL::Script->new;
     my $id      = $self->getId;
-    my $options = objToJson($self->{_options});
+    my $options = toJSON($self->{_options});
+    my $script;
 
     # TRANSLATORS: {TITLE} is a placeholder
     my $delete  = escape(__"The icon '{TITLE}' was removed.");
 
     $self->SUPER::_realize;
 
-    $script->setScript("Iconbox.create('$id', $options, {'delete': '$delete'});");
+    $script = "IWL.Iconbox.create('$id', $options, {'delete': '$delete'});";
     foreach my $icon (@{$self->{__icons}}) {
 	my $icon_id = $icon->getId;
-        $script->appendScript("\$('$id').selectIcon('$icon_id');")
-          if $icon->{_selected};
+        $script .= "\$('$id').selectIcon('$icon_id');" if $icon->{_selected};
     }
-    $self->_appendAfter($script);
+    $self->_appendInitScript($script);
 }
 
 sub _setupDefaultClass {
@@ -179,13 +178,14 @@ sub _refreshEvent {
     my ($event, $handler) = @_;
 
     IWL::Object::printJSONHeader;
-    my ($list, $extras) = $handler->($event->{params})
-        if 'CODE' eq ref $handler;
+    my ($list, $extras) = ('CODE' eq ref $handler)
+      ? $handler->($event->{params})
+      : (undef, undef);
     $list = [] unless ref $list eq 'ARRAY';
 
     print '{icons: ['
            . join(',', map {'"' . escape($_->getContent) . '"'} @$list)
-           . '], extras: ' . (objToJson($extras) || 'null'). '}';
+           . '], extras: ' . (toJSON($extras) || 'null'). '}';
 }
 
 # Internal

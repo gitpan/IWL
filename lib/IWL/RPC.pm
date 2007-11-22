@@ -6,7 +6,7 @@ package IWL::RPC;
 use strict;
 
 use IWL::Object;
-use JSON;
+use IWL::JSON qw(toJSON evalJSON);
 
 =head1 NAME
 
@@ -26,6 +26,14 @@ IWL::RPC->new ([B<%ARGS>])
 
 Where B<%ARGS> is an optional hash parameter with with key-values.
 
+=over 4
+
+=item B<parameters>
+
+A hashref of CGI parameters to use, instead of reading for GET/POST parameters.
+
+=back
+
 =cut
 
 sub new {
@@ -34,7 +42,7 @@ sub new {
     my $self  = bless {}, $class;
 
     $self->{__isRead} = undef;
-    $self->{__params}  = undef;
+    $self->{__params} = $args{parameters} if ref $args{parameters} eq 'HASH';
 
     return $self;
 }
@@ -181,7 +189,7 @@ sub handleEvent {
     my $self = shift;
     my %form = $self->getParams;
     return if !$form{IWLEvent};
-    $form{IWLEvent} = jsonToObj($form{IWLEvent});
+    $form{IWLEvent} = evalJSON($form{IWLEvent}, 1);
     while (my $name = shift) {
 	my $handler = shift;
 	if ($name eq $form{IWLEvent}{eventName}) {
@@ -209,25 +217,28 @@ sub handleEvent {
 sub __defaultEvent {
     my ($self, $event, $handler) = @_;
 
-    my ($data, $extras) = $handler->($event->{params}, $event->{options}{id},
+    my ($data, $extras) = ('CODE' eq ref $handler)
+      ? $handler->($event->{params}, $event->{options}{id},
         $event->{options}{collectData} ? $event->{options}{elementData} : undef)
-      if 'CODE' eq ref $handler;
-    if (ref $data eq 'ARRAY' || ref $data eq 'HASH') {
-	$data = objToJson($data);
+      : (undef, undef);
+    if (UNIVERSAL::isa($data, 'IWL::Object')) {
+        $data = $data->getJSON unless $event->{options}{update};
+    } elsif (ref $data eq 'ARRAY' || ref $data eq 'HASH') {
+        $data = toJSON($data);
     } else {
         $data = qq|"$data"| unless $event->{options}{update};
     }
 
     if ($event->{options}{update}) {
-	IWL::Object::printHTMLHeader;
-	if (UNIVERSAL::isa($data, 'IWL::Object')) {
-	    $data->print;
-	} else {
-	    print $data;
-	}
+        IWL::Object::printHTMLHeader;
+        if (UNIVERSAL::isa($data, 'IWL::Object')) {
+            $data->print;
+        } else {
+            print $data;
+        }
     } else {
-	IWL::Object::printJSONHeader;
-	print '{data: ' . $data . ', extras: ' . (objToJson($extras) || 'null') . '}';
+        IWL::Object::printJSONHeader;
+        print '{data: ' . $data . ', extras: ' . (toJSON($extras) || 'null') . '}';
     }
 }
 
