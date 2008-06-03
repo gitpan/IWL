@@ -6,6 +6,20 @@ Object.extend(Prototype.Browser, {
 
 (function() {
   var EventMethods = {
+    serialize: function(event) {
+      var keys = Object.keys(event), ret = {}, test = /^[A-Z_]+$/;
+      keys.each(function(key) {
+        if (test.test(key)) return;
+        ['Array', 'Boolean', 'Hash', 'Number', 'Object', 'String'].each(function(method) {
+          if (Object['is' + method](event[key])) {
+            ret[key] = event[key];
+            throw $break;
+          }
+        });
+      });
+
+      return ret;
+    },
     // Checks if the element is in the current event stack
     checkElement: function(event, element) {
       element = $(element);
@@ -28,7 +42,38 @@ Object.extend(Prototype.Browser, {
   Object.extend(Event, EventMethods);
 })();
 
+Event.Options = Class.create({
+  initialize: function() {
+    Object.extend(this, arguments[0] || {});
+  }
+});
 Object.extend(Event, (function() {
+  var cache = {};
+  var eventMapping = {
+    click:     [createMouseEvent],
+    dblclick:  [createMouseEvent],
+    mouseover: [createMouseEvent],
+    mouseout:  [createMouseEvent],
+    mousedown: [createMouseEvent],
+    mouseup:   [createMouseEvent],
+    mousemove: [createMouseEvent],
+    keypress:  [createKeyEvent],
+    keydown:   [createKeyEvent],
+    keyup:     [createKeyEvent],
+    load:      [createHTMLEvent, { bubbles: false, cancelable: false}],
+    unload:    [createHTMLEvent, { bubbles: false, cancelable: false}],
+    abort:     [createHTMLEvent, { bubbles: true,  cancelable: false}],
+    error:     [createHTMLEvent, { bubbles: true,  cancelable: false}],
+    select:    [createHTMLEvent, { bubbles: true,  cancelable: false}],
+    change:    [createHTMLEvent, { bubbles: true,  cancelable: false}],
+    submit:    [createHTMLEvent, { bubbles: true,  cancelable: true}],
+    reset:     [createHTMLEvent, { bubbles: true,  cancelable: false}],
+    focus:     [createHTMLEvent, { bubbles: false, cancelable: false}],
+    blur:      [createHTMLEvent, { bubbles: false, cancelable: false}],
+    resize:    [createHTMLEvent, { bubbles: true,  cancelable: false}],
+    scroll:    [createHTMLEvent, { bubbles: true,  cancelable: false}]
+  };
+
   function callbackWrapper(observer) {
     return function(event) {
       var args = event.memo
@@ -66,7 +111,95 @@ Object.extend(Event, (function() {
         cache[id][eventName] = null;
   }
 
-  var cache = {};
+  function createMouseEvent(element, eventName) {
+    var options = Object.extend({
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      detail: 1,
+      screenX: 0,
+      screenY: 0,
+      clientX: 0,
+      clientY: 0,
+      ctrlKey: false,
+      altKey: false,
+      shiftKey: false,
+      metaKey: false,
+      button: 0,
+      relatedTarget: undefined
+    }, arguments[2]);
+
+    var event;
+    if (document.createEvent) {
+      event = document.createEvent('MouseEvents');
+      event.initMouseEvent(
+          eventName, options.bubbles, options.cancelable, options.view,
+          options.detail, options.screenX, options.screenY, options.clientX,
+          options.clientY, options.ctrlKey, options.altKey, options.shiftKey,
+          options.metaKey, options.button, options.relatedTarget
+        );
+    } else if (document.createEventObject) {
+      event = document.createEventObject();
+      Object.extend(event, options);
+      event.button = options.button == 0
+        ? 1 : options.button == 1
+          ? 4 : options.button == 2
+            ? 2 : 0;
+    }
+
+    return event;
+  }
+
+  function createKeyEvent(element, eventName) {
+    var options = Object.extend({
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      ctrlKey: false,
+      altKey: false,
+      shiftKey: false,
+      metaKey: false,
+      keyCode: 0,
+      charCode: 0
+    }, arguments[2]);
+
+    var event;
+    if (document.createEvent) {
+      if (Prototype.Browser.Gecko) {
+        event = document.createEvent('KeyEvents');
+        event.initKeyEvent(
+          eventName, options.bubbles, options.cancelable, options.view,
+          options.ctrlKey, options.altKey, options.shiftKey, options.metaKey,
+          options.keyCode, options.charCode
+        );
+      } else {
+        event = document.createEvent('Events');
+        event.initEvent(eventName, options.bubbles, options.cancelable);
+        delete options.bubbles; delete options.cancelable;
+        Object.extend(event, options);
+      }
+    } else if (document.createEventObject) {
+      event = document.createEventObject();
+      Object.extend(event, options);
+    }
+
+    return event;
+  }
+
+  function createHTMLEvent(element, eventName) {
+    var options = Object.extend(arguments[3], arguments[2]);
+
+    var event;
+    if (document.createEvent) {
+      event = document.createEvent('HTMLEvents');
+      event.initEvent(eventName, options.bubbles, options.cancelable);
+    } else if (document.createEventObject) {
+      event = document.createEventObject();
+      Object.extend(event, options);
+    }
+
+    return event;
+  }
 
   var customEvents = {
     'dom:mouseenter': {
@@ -155,7 +288,40 @@ Object.extend(Event, (function() {
       var args = $A(arguments);
       var element = args.shift();
       var name = args.shift();
-      return Event.fire(element, name, args);
+      var options;
+      if (args.last() instanceof Event.Options)
+	options = args.pop();
+      return Event.fire(element, name, args, options);
+    },
+    fire: function(element, eventName, memo, options) {
+      element = $(element);
+      if (element == document && document.createEvent && !element.dispatchEvent)
+        element = document.documentElement;
+
+      var event;
+      if (eventMapping[eventName] && Object.isFunction(eventMapping[eventName][0])) {
+        event = eventMapping[eventName][0](element, eventName, options, eventMapping[eventName][1]);
+        event.eventType = "on" + eventName;
+      } else {
+	if (document.createEvent) {
+	  event = document.createEvent("HTMLEvents");
+	  event.initEvent("dataavailable", true, true);
+	} else {
+	  event = document.createEventObject();
+	  event.eventType = "ondataavailable";
+	}
+      }
+
+      event.eventName = eventName;
+      event.memo = memo || { };
+
+      if (document.createEvent) {
+        element.dispatchEvent(event);
+      } else {
+        element.fireEvent(event.eventType, event);
+      }
+
+      return Event.extend(event);
     }
   };
 })());
@@ -171,10 +337,10 @@ Object.extend(Event, (function() {
     },
     positionAtCenter: function(element, relative) {
       element = $(element);
-      var dims = element.getDimensions();
-      var page_dim = document.viewport.getDimensions();
       if (!relative)
         element.style.position = "absolute";
+      var dims = element.getDimensions();
+      var page_dim = document.viewport.getDimensions();
       element.style.left = (page_dim.width - dims.width)/2 + 'px';
       if ((page_dim.height - dims.height) < 0)
         element.style.top = '10px';
@@ -220,7 +386,11 @@ Object.extend(Event, (function() {
       var sliders = element.select('.slider');
       var selects = element.select('select');
       var textareas = element.select('textarea');
-      var inputs = element.select('input');
+      var inputs = element.select('input').findAll(function(el) {
+        return el.hasClassName('entry_text') || el.hasClassName('spinner_text')
+          ? false : true;
+      });
+      var entries = element.select('.entry').concat(element.select('.spinner'));
 
       var valid_name = function(e) {
         return e.hasAttribute('name') ? e.readAttribute('name') : e.readAttribute('id');
@@ -237,6 +407,13 @@ Object.extend(Event, (function() {
       sliders.each(function(s) {
           if ('control' in s)
             push_values(valid_name(s), s.control.value);
+        });
+      entries.each(function(e) {
+          push_values(
+            e.control.hasAttribute('name')
+              ? e.control.readAttribute('name')
+              : e.id,
+            e.getValue());
         });
       selects.each(function(s) {
           push_values(valid_name(s), s.value);
@@ -318,6 +495,17 @@ Object.extend(Event, (function() {
       }
       return true;
     },
+    truncate: function(element) {
+      if (!(element = $(element))) return;
+      if (element.getWidth() == element.scrollWidth) return;
+      var abbr = element.select('abbr.ellipsis')[0]
+              || new Element('abbr', {className: 'ellipsis'}).update('&hellip;');
+      abbr.writeAttribute({title: element.getText()});
+      element.appendChild(abbr);
+      abbr.setStyle({marginLeft: '-' + (element.scrollWidth - element.getWidth()) + 'px'})
+
+      return element;
+    },
     signalConnect: function() {
       Event.signalConnect.apply(Event, arguments);
       return $A(arguments).first();
@@ -366,31 +554,15 @@ Object.extend(String.prototype, {
   }
 });
 
-Object.extend(Array.prototype, {
-  slice: function(from, length) {
-    var copy = this.clone();
-    if (arguments.length == 1 && arguments[0] instanceof ObjectRange) {
-      var range = arguments[0];
-      from = range.start;
-      if (from < 0 && range.end >= 0)
-        return copy.splice(from, -1 * from).concat(copy.splice(0, range.end + 1));
-      else if (from < 0 && range.end < 0)
-        return copy.splice(from, range.end + 1 - from);
-      else
-        length = range.end + 1 - from;
-
-    } else if (length === undefined)
-      length = 1;
-    return copy.splice(from, length);
-  }
-});
-
 Object.extend(Object, {
   isObject: function(object) {
     return object && object.constructor === Object;
   },
   isBoolean: function(object) {
     return typeof object == "boolean";
+  },
+  isHash: function(object) {
+    return object && object instanceof Hash;
   }
 });
 
@@ -572,65 +744,6 @@ Object.extend(Date.prototype, {
   }
 });
 
-document.insertScript = (function () {
-  var scripts = null;
-
-  if (Prototype.Browser.WebKit || Prototype.Browser.KHTML)
-    Prototype._helpers = [];
-
-  return function(url) {
-    var options = Object.extend({
-      onComplete: Prototype.emptyFunction,
-      skipCache: false,
-      debug: false
-    }, arguments[1]);
-    if (!scripts) scripts = $$('script').pluck('src');
-    if (scripts.grep(url + "$").length) {
-      if (options.onComplete)
-        options.onComplete.bind(window, url).delay(0.1);
-      return;
-    }
-    scripts.push(url);
-    if (options.skipCache) {
-      var query = $H({_: (new Date).valueOf()});
-      var index = url.indexOf('?');
-      if (index != -1) {
-        query.merge(url.substr(index).toQueryParams());
-        url = url.substr(0, index);
-      }
-      url += '?' + query.toQueryString();
-    }
-
-    var script = new Element('script', {type: 'text/javascript', charset: 'utf-8'});
-    var fired = false;
-    var stateChangedCallback = function() {
-      if (fired) return;
-      if (script.readyState && script.readyState != 'loaded' &&
-          script.readyState != 'complete')
-        return;
-      script.onreadystatechange = script.onload = null;
-      if (options.onComplete) options.onComplete(url);
-      if (!options.debug) script.remove();
-      fired = true;
-    };
-
-    script.onload = script.onreadystatechange = stateChangedCallback;
-    script.src = url;
-
-    document.getElementsByTagName('head').item(0).appendChild(script);
-
-    if ((Prototype.Browser.WebKit || Prototype.Browser.KHTML) && options.onComplete) {
-      var helper = new Element('script', {type: 'text/javascript'});
-      var index = Prototype._helpers.push({script: helper, callback: stateChangedCallback}) - 1;
-      helper.update(
-        'var helper = Prototype._helpers[' + index + '];helper.callback();' +
-        'helper.script.remove.delay(0.1);Prototype._helpers[' + index + '] = undefined'
-      );
-      Element.extend(document.body).appendChild.bind(document.body, helper).delay(0.1);
-    }
-  }
-})();
-
 Object.extend(String.prototype, (function() {
   var urlCount     = 0;
   var codeSnippets = [];
@@ -657,7 +770,7 @@ Object.extend(String.prototype, (function() {
       this.extractScripts().each(function(script) {
         if (!script) return;
         if (urlCount)
-          codeSnippets.push(script) 
+          codeSnippets.push(script);
         else
           eval(script);
       });
@@ -715,5 +828,17 @@ Object.extend(document.viewport, {
 
     testDiv.remove();
     return size;
+  },
+
+  /* This makes IE return non-0 values in quirks-mode, should be removed if prototype fixes this in future versions */
+  getDimensions: function() {
+    var dimensions = { };
+    var B = Prototype.Browser;
+    $w('width height').each(function(d) {
+      var D = d.capitalize();
+      dimensions[d] = (B.WebKit && !document.evaluate) ? self['inner' + D] :
+        (B.Opera || B.IE) ? document.body['client' + D] : document.documentElement['client' + D];
+    });
+    return dimensions;
   }
 });

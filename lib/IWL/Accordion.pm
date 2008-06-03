@@ -19,7 +19,7 @@ IWL::Accordion - an accordion widget
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::Accordion>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::Accordion>
 
 =head1 DESCRIPTION
 
@@ -62,7 +62,7 @@ sub new {
     # The list of pages
     $self->{__pages} = [];
 
-    $self->__init(%args);
+    $self->_init(%args);
 
     return $self;
 }
@@ -75,7 +75,7 @@ sub new {
 
 Appends a new page and adds the object to the page
 
-Parameter: B<OBJECT> - the IWL::Object(3pm) to be appended, B<TEXT> - the text for the page title, B<SELECTED> - true if the page should be the selected one
+Parameter: B<OBJECT> - the L<IWL::Object> to be appended, B<TEXT> - the text for the page title, B<SELECTED> - true if the page should be the selected one
 
 Returns: the newly created page
 
@@ -90,7 +90,7 @@ sub appendPage {
 
 Prepends a new page and adds the object to the page
 
-Parameter: B<OBJECT> - the IWL::Object(3pm) to be prepended, B<TEXT> - the text for the page title, B<SELECTED> - true if the page should be the selected one
+Parameter: B<OBJECT> - the L<IWL::Object> to be prepended, B<TEXT> - the text for the page title, B<SELECTED> - true if the page should be the selected one
 
 Returns: the newly created page
 
@@ -240,9 +240,7 @@ sub _setupDefaultClass {
     $self->SUPER::prependClass($self->{_defaultClass});
 }
 
-# Internal
-#
-sub __init {
+sub _init {
     my ($self, %args) = @_;
 
     $self->{_defaultClass} = 'accordion';
@@ -263,6 +261,8 @@ sub __init {
     return $self;
 }
 
+# Internal
+#
 sub __setup_page {
     my ($self, $object, $text, $selected, $reverse) = @_;
     my $page = IWL::Accordion::Page->new;

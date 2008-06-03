@@ -16,7 +16,7 @@ IWL::Image - an image widget
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Image>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Image>
 
 =head1 DESCRIPTION
 
@@ -85,8 +85,9 @@ Parameters: B<SRC> - the source for the image
 
 sub set {
     my ($self, $src) = @_;
+    require IWL::Static;
 
-    return $self->setAttribute(src => $src, 'uri');
+    return $self->setAttribute(src => IWL::Static->addRequest($src), 'uri');
 }
 
 =item B<setAlt> (B<TEXT>)
@@ -147,6 +148,21 @@ Returns the alternative text of the image
 
 sub getAlt {
     shift->getAttribute('alt', 1);
+}
+
+# Protected
+#
+sub _realize {
+    my $self = shift;
+    my $src;
+    
+    $self->SUPER::_realize;
+    if (!$self->getAlt && ($src = $self->getSrc)) {
+        my $name = pop @{[split '/', $src]};
+        $name =~ s/_/ /g;
+        $name =~ s/\.\w+?$//;
+        $self->setAlt($name);
+    }
 }
 
 1;

@@ -18,7 +18,7 @@ IWL::Notebook - a tabbed notebook widget
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::Notebook>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::Notebook>
 
 =head1 DESCRIPTION
 
@@ -53,7 +53,7 @@ sub new {
     # The list of tabs
     $self->{__tabs} = [];
 
-    $self->__init(%args);
+    $self->_init(%args);
 
     return $self;
 }
@@ -66,7 +66,7 @@ sub new {
 
 Appends a new tab and adds the object to the tab page
 
-Parameter: B<OBJECT> - the IWL::Object(3pm) to be appended, B<TEXT> - the text for the tab label, B<SELECTED> - true if the tab should be the selected one
+Parameter: B<OBJECT> - the L<IWL::Object> to be appended, B<TEXT> - the text for the tab label, B<SELECTED> - true if the tab should be the selected one
 
 Returns: the newly created tab 
 
@@ -74,14 +74,14 @@ Returns: the newly created tab
 
 sub appendTab {
     my ($self, $text, $object, $selected) = @_;
-    return $self->__setup_page($object, $text, $selected);
+    return $self->__setupPage($object, $text, $selected);
 }
 
 =item B<prependTab> (B<TEXT>, [B<OBJECT>, B<SELECTED>])
 
 Prepends a new tab and adds the object to the tab page
 
-Parameter: B<OBJECT> - the IWL::Object(3pm) to be prepended, B<TEXT> - the text for the tab label, B<SELECTED> - true if the tab should be the selected one
+Parameter: B<OBJECT> - the L<IWL::Object> to be prepended, B<TEXT> - the text for the tab label, B<SELECTED> - true if the tab should be the selected one
 
 Returns: the newly created tab 
 
@@ -89,7 +89,7 @@ Returns: the newly created tab
 
 sub prependTab {
     my ($self, $text, $object, $selected) = @_;
-    return $self->__setup_page($object, $text, $selected, 1);
+    return $self->__setupPage($object, $text, $selected, 1);
 }
 
 # Overrides
@@ -122,16 +122,6 @@ sub _realize {
     $self->_appendInitScript("IWL.Notebook.create('$id');");
 }
 
-sub _registerEvent {
-    my ($self, $event, $params, $options) = @_;
-
-    if ($event eq 'IWL-Notebook-Tab-add') {
-	return $options;
-    } else {
-	return $self->SUPER::_registerEvent($event, $params, $options);
-    }
-}
-
 sub _setupDefaultClass {
     my $self = shift;
 
@@ -145,9 +135,7 @@ sub _setupDefaultClass {
     return $self;
 }
 
-# Internal
-#
-sub __init {
+sub _init {
     my ($self, %args) = @_;
     my $navgroup  = IWL::Container->new;
     my $navborder = IWL::Container->new;
@@ -175,8 +163,10 @@ sub __init {
 
     return $self;
 }
+# Internal
+#
 
-sub __setup_page {
+sub __setupPage {
     my ($self, $object, $text, $selected, $reverse) = @_;
     my $tab = IWL::Notebook::Tab->new;
 

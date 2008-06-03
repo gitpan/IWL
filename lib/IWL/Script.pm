@@ -8,6 +8,7 @@ use strict;
 use base qw(IWL::Object);
 
 use IWL::Text;
+use IWL::Config qw(%IWLConfig);
 
 =head1 NAME
 
@@ -15,7 +16,7 @@ IWL::Script - A script object.
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Script>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Script>
 
 =head1 DESCRIPTION
 
@@ -33,7 +34,7 @@ sub new {
     my ($proto, %args) = @_;
     my $class = ref($proto) || $proto;
 
-    my $self = $class->SUPER::new();
+    my $self = $class->SUPER::new(%args);
 
     $self->{_tag} = "script";
     $self->{__scripts} = [];
@@ -51,14 +52,32 @@ sub new {
 
 Sets a "src='B<SOURCE>'" attribute to B<<script>>.
 
-Parameter: B<SOURCE> - a URL to a javascript file
+Parameter: B<SOURCE> - a URL to a javascript file, or an array reference of URIs, if both I<STATIC_URI_SCRIPT> and I<STATIC_UNION> options are set.
 
 =cut
 
 sub setSrc {
     my ($self, $source) = @_;
+    require IWL::Static;
 
-    return $self->setAttribute(src => $source, 'uri');
+    if (ref $source eq 'ARRAY') {
+        return $self->setAttribute(src =>
+            IWL::Static->addMultipleRequest($source, 'text/javascript'),
+            'uri'
+        );
+    } else {
+        return $self->setAttribute(src => IWL::Static->addRequest($source), 'uri');
+    }
+}
+
+=item B<getSrc>
+
+Returns the source of the script
+
+=cut
+
+sub getSrc {
+    return shift->getAttribute('src', 1);
 }
 
 =item B<appendScript> (B<STRING>)
@@ -108,23 +127,32 @@ sub setScript {
 
 =item B<getScript>
 
-Returns the script string from the object
+Returns the script string from the object.
+If the I<STRICT_LEVEL> value of L<IWL::Config> is greater than I<1>, the script will be encapsulated by B<E<lt>![CDATA[ ... ]]E<gt>>
 
 =cut
 
 sub getScript {
     my $self = shift;
-    my $string = join '; ', @{$self->{__scripts}};
+    my $string = join ";\n", @{$self->{__scripts}};
+    $string =~ s/;+/;/g;
     $string .= ';' if $string && $string !~ /;\s*$/;
 
-    return $string;
+    return $string
+      ? $IWLConfig{STRICT_LEVEL} > 1
+        ? "\n//<![CDATA[\n" . $string . "\n//]]>"
+        : $string
+      : '';
 }
 
 # Protected
 #
 sub _realize {
     my $self = shift;
-    $self->appendChild(IWL::Text->new($self->getScript));
+
+    $self->SUPER::_realize;
+    $self->appendChild(IWL::Text->new($self->getScript))
+        unless $self->hasAttribute('src');
 }
 
 1;

@@ -18,11 +18,11 @@ IWL::Tree - a tree widget
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Table> -> L<IWL::Tree>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Table> -> L<IWL::Tree>
 
 =head1 DESCRIPTION
 
-The tree widget provides a container that holds cells arranged in a tree layout, with multiple rows. Inherits from IWL::Table(3pm)
+The tree widget provides a container that holds cells arranged in a tree layout, with multiple rows. Inherits from L<IWL::Table>
 
 =head1 CONSTRUCTOR
 
@@ -80,45 +80,22 @@ Fires when a row has expanded
 
 =back
 
+=head1 EVENTS
+
+=over 4
+
+=item B<IWL-Tree-refresh>
+
+Emitted when the tree has to be refreshed. This event is used by L<IWL::PageControl>. As a return first parameter, the perl callback has to return an arrayref of L<IWL::Tree::Row> objects. As a second return parameter, the perl callback can return the same values as the L<IWL::Iconbox> refresh event. These values will change the state of the L<IWL::PageControl> for this widget.
+
+=back
+
 =cut
 
 sub new {
     my ($proto, %args) = @_;
     my $class = ref($proto) || $proto;
-    my $options = {multipleSelect => 0, scrollToSelection => 0, list => 0, alternate => 0};
-    my $default_class;
-    my $id;
-
-    $default_class = 'tree';
-
-    $id = randomize($default_class) if !$args{id};
-
-    $options->{list} = 1 if $args{list};
-    $options->{multipleSelect} = 1 if $args{multipleSelect};
-    $options->{scrollToSelection} = 1 if $args{scrollToSelection};
-    $options->{alternate} = 1 if $args{alternate};
-    $options->{animate} = 1 if $args{animate};
-    delete @args{qw(list multipleSelect scrollToSelection alternate)};
-
     my $self = $class->SUPER::new(%args);
-    $self->{_defaultClass} = $default_class;
-    $self->setId($id) if $id;
-    $self->requiredJs('base.js', 'tree.js');
-
-    # All the rows from the body of the tree
-    $self->{_bodyRows} = {};
-
-    # Holds the custom sortable callbacks for the tree/list
-    $self->{__sortables} = [];
-
-    $self->{_options} = $options;
-    $self->{_customSignals} = {
-        select_all   => [],
-        unselect_all => [],
-        row_activate => [],
-        row_collapse => [],
-        row_expand   => []
-    };
 
     return $self;
 }
@@ -185,7 +162,7 @@ sub setSortableCallback {
 
 Appends an array of rows to the body to the tree. An alias to the B<appendBody> method.
 
-Parameters: B<ROW> - a row of IWL::Tree::Row(3pm)
+Parameters: B<ROW> - a row of L<IWL::Tree::Row>
 
 =cut
 
@@ -198,7 +175,7 @@ sub appendRow {
 
 Prepeds an array of rows to the body to the tree. An alias to the B<prependBody> method.
 
-Parameters: B<ROW> - a row of IWL::Tree::Row(3pm)
+Parameters: B<ROW> - a row of L<IWL::Tree::Row>
 
 =cut
 
@@ -271,16 +248,20 @@ sub prependFooter {
 # Protected
 #
 sub _realize {
-    my $self    = shift;
-    my $cell    = IWL::Tree::Cell->new;
-    my $b       = escape($cell->_blank_indent->getJSON);
-    my $i       = escape($cell->_row_indent->getJSON);
-    my $l       = escape($cell->_l_junction->getJSON);
-    my $l_e     = escape($cell->_l_expand->getJSON);
-    my $l_c     = escape($cell->_l_collapse->getJSON);
-    my $t       = escape($cell->_t_junction->getJSON);
-    my $t_e     = escape($cell->_t_expand->getJSON);
-    my $t_c     = escape($cell->_t_collapse->getJSON);
+    my $self  = shift;
+    my $images = '{}';
+    unless ($self->{_options}{list}) {
+        my $cell = IWL::Tree::Cell->new;
+        my $b    = escape($cell->_blank_indent->getJSON);
+        my $i    = escape($cell->_row_indent->getJSON);
+        my $l    = escape($cell->_l_junction->getJSON);
+        my $l_e  = escape($cell->_l_expand->getJSON);
+        my $l_c  = escape($cell->_l_collapse->getJSON);
+        my $t    = escape($cell->_t_junction->getJSON);
+        my $t_e  = escape($cell->_t_expand->getJSON);
+        my $t_c  = escape($cell->_t_collapse->getJSON);
+        $images = qq({b:"$b",i:"$i",l:"$l",l_e:"$l_e",l_c:"$l_c",t:"$t",t_e:"$t_e",t_c:"$t_c"});
+    }
     my $id      = $self->getId;
     my $options = {};
     my $script;
@@ -295,7 +276,6 @@ sub _realize {
 
     $self->_set_alternate if $self->{_options}{alternate};
 
-    my $images = qq({b:"$b",i:"$i",l:"$l",l_e:"$l_e",l_c:"$l_c",t:"$t",t_e:"$t_e",t_c:"$t_c"});
     $script = "IWL.Tree.create('$id', $images, $options);";
     foreach my $sortable (@{$self->{__sortables}}) {
 	$script .= "\$('$id').setCustomSortable($sortable->[0], $sortable->[1]);";
@@ -318,16 +298,56 @@ sub _registerEvent {
 
 sub _refreshEvent {
     my ($event, $handler) = @_;
+    my $response = IWL::Response->new;
 
-    IWL::Object::printJSONHeader;
     my ($list, $extras) = ('CODE' eq ref $handler)
       ? $handler->($event->{params})
       : (undef, undef);
     $list = [] unless ref $list eq 'ARRAY';
 
-    print '{rows: ['
+    $response->send(
+        content => '{rows: ['
            . join(',', map {'"' . escape($_->getContent) . '"'} @$list)
-           . '], extras: ' . (toJSON($extras) || 'null'). '}';
+           . '], extras: ' . (toJSON($extras) || 'null'). '}',
+        header => IWL::Object::getJSONHeader,
+    );
+}
+
+sub _init {
+    my ($self, %args) = @_;
+    my $options = {multipleSelect => 0, scrollToSelection => 0, list => 0, alternate => 0};
+    my $default_class;
+
+    $default_class = 'tree';
+
+    $args{id} = randomize($default_class) if !$args{id};
+
+    $options->{list} = 1 if $args{list};
+    $options->{multipleSelect} = 1 if $args{multipleSelect};
+    $options->{scrollToSelection} = 1 if $args{scrollToSelection};
+    $options->{alternate} = 1 if $args{alternate};
+    $options->{animate} = 1 if $args{animate};
+    delete @args{qw(list multipleSelect scrollToSelection alternate)};
+
+    $self->SUPER::_init(%args);
+    $self->{_defaultClass} = $default_class;
+    $self->requiredJs('base.js', 'tree.js');
+
+    # All the rows from the body of the tree
+    $self->{_bodyRows} = {};
+
+    # Holds the custom sortable callbacks for the tree/list
+    $self->{__sortables} = [];
+
+    $self->{_options} = $options;
+    $self->{_customSignals} = {
+        select_all   => [],
+        unselect_all => [],
+        row_activate => [],
+        row_collapse => [],
+        row_expand   => []
+    };
+    $self->setSelectable(0);
 }
 
 # Internal

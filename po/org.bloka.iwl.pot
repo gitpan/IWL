@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: Viktor Kojouharov <viktork@cpan.org>\n"
-"POT-Creation-Date: 2007-11-14 11:45+0200\n"
+"POT-Creation-Date: 2008-06-02 18:06+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,33 +16,33 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../lib/IWL/GoogleMap.pm:158
-msgid "Container has no id"
+#: ../lib/IWL/Google/Map.pm:398
+#, perl-brace-format
+msgid "No API key provided. One can be obtained from {URL}"
 msgstr ""
 
-#: ../lib/IWL/GoogleMap.pm:270
-msgid ""
-"No key provided.  Please follow this link in order to obtain a key from "
-"Google."
-msgstr ""
-
-#: ../lib/IWL/Tooltip.pm:79
+#: ../lib/IWL/Tooltip.pm:79 ../lib/IWL/Tooltip.pm:100 ../lib/IWL/Menu.pm:138
 msgid "Invalid id"
 msgstr ""
 
-#: ../lib/IWL/Tooltip.pm:100 ../lib/IWL/Menu.pm:140
-#, perl-brace-format
-msgid "Invalid id: '{ID}'"
-msgstr ""
-
-#: ../lib/IWL/Druid.pm:171
+#: ../lib/IWL/Druid.pm:169
 msgid "Finish"
 msgstr ""
 
 #. TRANSLATORS: {PAGEENTRY} and {PAGECOUNT} are placeholders
-#: ../lib/IWL/PageControl.pm:166
+#: ../lib/IWL/PageControl.pm:164
 #, perl-brace-format
 msgid "{PAGEENTRY} of {PAGECOUNT}"
+msgstr ""
+
+#: ../lib/IWL/Static.pm:294
+#, perl-brace-format
+msgid "Cannot open directory {URI}: {ERR}"
+msgstr ""
+
+#: ../lib/IWL/Static.pm:330
+#, perl-brace-format
+msgid "The URI '{URI}' does not belong in the predefined list of static URIs."
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:28
@@ -54,7 +54,7 @@ msgid "Apply"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:36
-msgid "Back"
+msgid "Calendar"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:40
@@ -74,23 +74,23 @@ msgid "Delete"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:56
-msgid "Download"
+msgid "Directory"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:60
-msgid "Edit"
+msgid "Create directory"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:64
-msgid "Export"
+msgid "Download"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:68
-msgid "Fullscreen"
+msgid "Edit"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:72
-msgid "Go"
+msgid "Fullscreen"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:76
@@ -98,131 +98,83 @@ msgid "Go back"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:80
-msgid "Go forward"
+msgid "Go down"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:84
-msgid "Go to first"
+msgid "Go forward"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:88
-msgid "Go to last"
+msgid "Go up"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:92
-msgid "Help"
+msgid "Go to first"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:96
-msgid "Information"
+msgid "Go to last"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:100
-msgid "Lock"
+msgid "Help"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:104
-msgid "Minimize"
+msgid "Information"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:108
-msgid "New"
+msgid "Lock"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:112
-msgid "Next"
+msgid "New"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:116
-msgid "OK"
+msgid "Next"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:120
-msgid "Preferences"
+msgid "OK"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:124
-msgid "Preview"
+msgid "Preferences"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:128
-msgid "Refresh"
+msgid "Preview"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:132
-msgid "Remove"
+msgid "Previous"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:136
-msgid "Save"
+msgid "Refresh"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:140
-msgid "Save and close"
+msgid "Remove"
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:144
+msgid "Save"
+msgstr ""
+
+#: ../lib/IWL/Stock.pm:148
 msgid "Upload"
 msgstr ""
 
-#: ../lib/IWL/Stock.pm:149
-msgid "Add Filter"
-msgstr ""
-
 #: ../lib/IWL/Stock.pm:153
-msgid "Directory"
-msgstr ""
-
-#: ../lib/IWL/Stock.pm:157
-msgid "Delete directory"
-msgstr ""
-
-#: ../lib/IWL/Stock.pm:161
-msgid "Edit directory"
-msgstr ""
-
-#: ../lib/IWL/Stock.pm:165
-msgid "Create directory"
-msgstr ""
-
-#: ../lib/IWL/Stock.pm:170
-msgid "Bottom"
-msgstr ""
-
-#: ../lib/IWL/Stock.pm:174 ../lib/IWL/Stock.pm:186
-msgid "Main menu"
-msgstr ""
-
-#: ../lib/IWL/Stock.pm:178
-msgid "Info"
-msgstr ""
-
-#: ../lib/IWL/Stock.pm:182
-msgid "Mail"
-msgstr ""
-
-#: ../lib/IWL/Stock.pm:190
-msgid "Quit"
-msgstr ""
-
-#: ../lib/IWL/Stock.pm:194
-msgid "Available roles"
-msgstr ""
-
-#: ../lib/IWL/Stock.pm:198
-msgid "Top"
-msgstr ""
-
-#: ../lib/IWL/Stock.pm:203
-msgid "Calendar"
-msgstr ""
-
-#: ../lib/IWL/Stock.pm:208 ../lib/IWL/Stock.pm:212
 msgid "Generic Text"
 msgstr ""
 
 #. TRANSLATORS: {TITLE} is a placeholder
-#: ../lib/IWL/Iconbox.pm:140
+#: ../lib/IWL/Iconbox.pm:200
 #, perl-brace-format
 msgid "The icon '{TITLE}' was removed."
 msgstr ""
@@ -231,8 +183,27 @@ msgstr ""
 msgid "Uploading ..."
 msgstr ""
 
-#: ../lib/IWL/Upload.pm:223
+#: ../lib/IWL/Upload.pm:221
 msgid "Browse ..."
+msgstr ""
+
+#: ../lib/IWL/Canvas.pm:34
+msgid "No context has been given."
+msgstr ""
+
+#: ../lib/IWL/Canvas.pm:155 ../lib/IWL/Canvas.pm:395 ../lib/IWL/Canvas.pm:471
+#: ../lib/IWL/Canvas.pm:830
+#, perl-brace-format
+msgid "Invalid color: '{COLOR}'"
+msgstr ""
+
+#: ../lib/IWL/Canvas.pm:832
+msgid "No gradient name has been given."
+msgstr ""
+
+#: ../lib/IWL/Canvas.pm:833
+#, perl-brace-format
+msgid "The gradient object '{GRADIENT}' does not exist."
 msgstr ""
 
 #. TRANSLATORS: week day abbreviations, {ABBR} is a placeholder

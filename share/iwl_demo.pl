@@ -1,10 +1,8 @@
-#! /usr/local/bin/perl
-#! /usr/local/bin/perl -d:ptkdb
+#! /usr/bin/perl
 # vim: set autoindent shiftwidth=4 tabstop=8:
 
 use strict;
 
-# use CGI qw/:standard/;
 use IWL;
 use IWL::Config qw(%IWLConfig);
 use IWL::Ajax qw(updaterCallback);
@@ -148,6 +146,36 @@ EOF
     }
 );
 
+# NavBar handlers
+$rpc->handleEvent(
+    'IWL-NavBar-activatePath',
+    sub {
+        my ($params, $id) = @_;
+
+        my $con = IWL::Container->new;
+        my $label = IWL::Label->new->setText('/' . join '/', @{$params->{path}});
+        my $list = IWL::List->new(type => 'ordered');
+
+        if ('Foo/Bar' eq join '/', @{$params->{path}}) {
+            $list->appendListItemText($_)
+                foreach qw(base.js button.js calendar.js contentbox.js unittest_extensions.js upload.js);
+        } elsif ('Foo/Bar/Baz/Beta' eq join '/', @{$params->{path}}) {
+            $list->appendListItemText($_)
+                foreach qw(main.css demo.css);
+        }
+
+        $con->appendChild(
+            IWL::Label->new->appendTextType("Elements for: ", 'strong'),
+            $label,
+            IWL::Label->new->appendTextType(" with values: ", 'em'),
+            IWL::Label->new->setText(join ':', @{$params->{values}}),
+            $list
+        );
+
+        return $con;
+    }
+);
+
 # IWL RPC JavaScript unit tests
 $rpc->handleEvent(
     'IWL-Object-testEvent',
@@ -171,9 +199,11 @@ if (my $file = $form{upload_file}) {
     IWL::Upload::printMessage("$name uploaded.", {filename => $name, uploaded => 1});
     exit 0;
 } elsif (my $text = $form{text}) {
-    IWL::Object::printHTMLHeader;
-    print "The following text was received: $text";
-    print IWL::Break->new()->getContent;
+    my $response = IWL::Response->new;
+    $response->send(
+        content => "The following text was received: $text" . IWL::Break->new()->getContent,
+        header => IWL::Object::getHTMLHeader
+    );
     exit 0;
 } elsif ($form{completion} && (my $search = quotemeta $form{completion})) {
     my @completions;
@@ -185,8 +215,8 @@ if (my $file = $form{upload_file}) {
     IWL::Entry::printCompletions(@completions);
     exit 0;
 } elsif ($text = $form{image}) {
-    IWL::Object::printHTMLHeader;
-    print "The following text was received: $text";
+    my $response = IWL::Response->new;
+    $response->send(content => "The following text was received: $text", header => IWL::Object::getHTMLHeader);
     exit 0;
 } else {
     my $page = IWL::Page->new;
@@ -194,12 +224,11 @@ if (my $file = $form{upload_file}) {
     my $tree = IWL::Tree->new(id => 'widgets_tree', alternate => 1, animate => 1);
     my $notebook = IWL::Notebook->new(id => 'main_notebook');
     my $container = IWL::Container->new(id => 'content');
-    my $style = IWL::Page::Link->newLinkToCSS($IWLConfig{SKIN_DIR} . '/demo.css');
     my @scripts = (qw(demo.js dist/unittest.js unittest_extensions.js));
     my $locale = IWL::Combo->new(id => 'locale');
 
+    $page->requiredCSS('demo.css');
     $page->appendChild($hbox);
-    $page->appendHeader($style);
     $hbox->packStart($tree)->appendChild($locale);
     $hbox->packStart($notebook);
     $page->requiredJs(@scripts);
@@ -221,7 +250,7 @@ EOF
 
     build_tree($tree);
     $page->setTitle('Widget Library');
-    $page->print;
+    $page->send(type => 'html', static => 1);
 }
 
 sub build_tree {
@@ -289,6 +318,8 @@ sub build_advanced_widgets {
     my $sliders = IWL::Tree::Row->new(id => 'sliders_row');
     my $iconbox = IWL::Tree::Row->new(id => 'iconbox_row');
     my $menus = IWL::Tree::Row->new(id => 'menus_row');
+    my $navbar = IWL::Tree::Row->new(id => 'navbar_row');
+    my $progress = IWL::Tree::Row->new(id => 'progress_bars_row');
     my $list = IWL::Tree::Row->new(id => 'list_row');
     my $table = IWL::Tree::Row->new(id => 'table_row');
     my $tree = IWL::Tree::Row->new(id => 'tree_row');
@@ -303,6 +334,10 @@ sub build_advanced_widgets {
     $row->appendRow($iconbox);
     $menus->appendTextCell('Menus');
     $row->appendRow($menus);
+    $navbar->appendTextCell('Navigation Bar');
+    $row->appendRow($navbar);
+    $progress->appendTextCell('Progress bars');
+    $row->appendRow($progress);
     $tables->appendTextCell('Tables');
     $row->appendRow($tables);
     $list->appendTextCell('List');
@@ -312,16 +347,17 @@ sub build_advanced_widgets {
     $tree->appendTextCell('Tree');
     $tables->appendRow($tree);
 
-    register_row_event($calendars, $combobox, $sliders, $iconbox, $menus, $list, $table, $tree);
+    register_row_event($calendars, $combobox, $sliders, $iconbox, $menus, $navbar, $progress, $list, $table, $tree);
 }
 
 sub build_containers {
     my $row = shift;
     my $accordions = IWL::Tree::Row->new(id => 'accordions_row');
     my $contentbox = IWL::Tree::Row->new(id => 'contentbox_row');
-    my $druid = IWL::Tree::Row->new(id => 'druid_row');
-    my $notebook = IWL::Tree::Row->new(id => 'notebook_row');
-    my $tooltips = IWL::Tree::Row->new(id => 'tooltips_row');
+    my $druid      = IWL::Tree::Row->new(id => 'druid_row');
+    my $expander   = IWL::Tree::Row->new(id => 'expander_row');
+    my $notebook   = IWL::Tree::Row->new(id => 'notebook_row');
+    my $tooltips   = IWL::Tree::Row->new(id => 'tooltips_row');
 
     $accordions->appendTextCell('Accordions');
     $row->appendRow($accordions);
@@ -329,41 +365,53 @@ sub build_containers {
     $row->appendRow($contentbox);
     $druid->appendTextCell('Druid');
     $row->appendRow($druid);
+    $expander->appendTextCell('Expander');
+    $row->appendRow($expander);
     $notebook->appendTextCell('Notebook');
     $row->appendRow($notebook);
     $tooltips->appendTextCell('Tooltips');
     $row->appendRow($tooltips);
 
-    register_row_event($accordions, $contentbox, $druid, $notebook, $tooltips);
+    register_row_event($accordions, $contentbox, $druid, $expander, $notebook, $tooltips);
 }
 
 sub build_misc {
-    my $row       = shift;
-    my $file      = IWL::Tree::Row->new(id => 'file_row');
+    my $row    = shift;
+    my $file   = IWL::Tree::Row->new(id => 'file_row');
+    my $gmap   = IWL::Tree::Row->new(id => 'gmap_row');
+    my $canvas = IWL::Tree::Row->new(id => 'canvas_row');
+    my $dnd    = IWL::Tree::Row->new(id => 'dnd_row');
 
     $file->appendTextCell('File Upload');
     $row->appendRow($file);
+    $gmap->appendTextCell('Google Map');
+    $row->appendRow($gmap);
+    $canvas->appendTextCell('Canvas');
+    $row->appendRow($canvas);
+    $dnd->appendTextCell('Drag & Drop');
+    $row->appendRow($dnd);
 
-    register_row_event($file);
+    register_row_event($file, $gmap, $canvas, $dnd);
 }
 
 sub build_tests {
-    my $row             = shift;
-    my $prototype       = IWL::Tree::Row->new(id => 'prototype_row');
-    my $scriptaculous   = IWL::Tree::Row->new(id => 'scriptaculous_row');
-    my $base            = IWL::Tree::Row->new(id => 'base_row');
-    my $button_test     = IWL::Tree::Row->new(id => 'button_test_row');
-    my $calendar_test   = IWL::Tree::Row->new(id => 'calendar_test_row');
-    my $contentbox_test = IWL::Tree::Row->new(id => 'contentbox_test_row');
-    my $druid_test      = IWL::Tree::Row->new(id => 'druid_test_row');
-    my $entry_test      = IWL::Tree::Row->new(id => 'entry_test_row');
-    my $iconbox_test    = IWL::Tree::Row->new(id => 'iconbox_test_row');
-    my $menu_test       = IWL::Tree::Row->new(id => 'menu_test_row');
-    my $notebook_test   = IWL::Tree::Row->new(id => 'notebook_test_row');
-    my $spinner_test    = IWL::Tree::Row->new(id => 'spinner_test_row');
-    my $tooltip_test    = IWL::Tree::Row->new(id => 'tooltip_test_row');
-    my $tree_test       = IWL::Tree::Row->new(id => 'tree_test_row');
-    my $upload_test     = IWL::Tree::Row->new(id => 'upload_test_row');
+    my $row              = shift;
+    my $prototype        = IWL::Tree::Row->new(id => 'prototype_row');
+    my $scriptaculous    = IWL::Tree::Row->new(id => 'scriptaculous_row');
+    my $base             = IWL::Tree::Row->new(id => 'base_row');
+    my $button_test      = IWL::Tree::Row->new(id => 'button_test_row');
+    my $calendar_test    = IWL::Tree::Row->new(id => 'calendar_test_row');
+    my $contentbox_test  = IWL::Tree::Row->new(id => 'contentbox_test_row');
+    my $druid_test       = IWL::Tree::Row->new(id => 'druid_test_row');
+    my $entry_test       = IWL::Tree::Row->new(id => 'entry_test_row');
+    my $iconbox_test     = IWL::Tree::Row->new(id => 'iconbox_test_row');
+    my $menu_test        = IWL::Tree::Row->new(id => 'menu_test_row');
+    my $notebook_test    = IWL::Tree::Row->new(id => 'notebook_test_row');
+    my $progressbar_test = IWL::Tree::Row->new(id => 'progressbar_test_row');
+    my $spinner_test     = IWL::Tree::Row->new(id => 'spinner_test_row');
+    my $tooltip_test     = IWL::Tree::Row->new(id => 'tooltip_test_row');
+    my $tree_test        = IWL::Tree::Row->new(id => 'tree_test_row');
+    my $upload_test      = IWL::Tree::Row->new(id => 'upload_test_row');
 
     $prototype->appendTextCell('Prototype extesions');
     $row->appendRow($prototype);
@@ -387,6 +435,8 @@ sub build_tests {
     $row->appendRow($menu_test);
     $notebook_test->appendTextCell('Notebook Test');
     $row->appendRow($notebook_test);
+    $progressbar_test->appendTextCell('Progress bar Test');
+    $row->appendRow($progressbar_test);
     $spinner_test->appendTextCell('Spinner Test');
     $row->appendRow($spinner_test);
     $tooltip_test->appendTextCell('Tooltip Test');
@@ -398,7 +448,7 @@ sub build_tests {
 
     register_row_event($prototype, $scriptaculous, $base, $button_test, $calendar_test,
         $contentbox_test, $druid_test, $entry_test, $iconbox_test, $menu_test,
-        $notebook_test, $spinner_test, $tooltip_test, $tree_test, $upload_test);
+        $notebook_test, $progressbar_test, $spinner_test, $tooltip_test, $tree_test, $upload_test);
 }
 
 sub generate_buttons {
@@ -434,15 +484,17 @@ sub generate_entries {
     my $normal_entry   = IWL::Entry->new;
     my $password_entry = IWL::Entry->new;
     my $cleanup_entry  = IWL::Entry->new;
+    my $useless        = IWL::Entry->new;
     my $image_entry    = IWL::Entry->new(id => 'image_entry');
     my $label          = IWL::Label->new;
     my $completion     = IWL::Entry->new(id => 'entry_completion');
 
     $container->appendChild($normal_entry, $password_entry, $cleanup_entry,
-        $image_entry, IWL::Break->new, $label, $completion);
+        $image_entry, $useless, IWL::Break->new, $label, $completion);
     $normal_entry->setDefaultText('Type here');
     $password_entry->setPassword(1);
-    $cleanup_entry->addClearButton;
+    $cleanup_entry->addClearButton->setValue('__cleanHere = 1', 'Clean me!');
+    $cleanup_entry->{text}->setStyle(width => '160px');
     $image_entry->setIconFromStock('IWL_STOCK_SAVE', 'left', 1);
     $image_entry->{image1}->signalConnect(click => updaterCallback(
 	    'entries_container', 'iwl_demo.pl',
@@ -450,6 +502,8 @@ sub generate_entries {
 	    insertion => 'bottom',
 	    onComplete => q|IWL.Status.display.bind(this, 'Completed')|,
     ));
+    $useless->setIconFromStock('IWL_STOCK_DOWNLOAD', 'left');
+    $useless->setIconFromStock('IWL_STOCK_UPLOAD', 'right');
     $label->setText("The following entry provides completion capabilities. Try searching for 'gtk' or 'IWL'.");
     $completion->setAutoComplete('iwl_demo.pl', paramName => 'completion');
     return $container;
@@ -627,6 +681,35 @@ sub generate_menus {
     return $container;
 }
 
+sub generate_navbar {
+    my $container = IWL::Container->new(id => 'navbar_container');
+    my $navbar    = IWL::NavBar->new(id => 'navbar');
+    my $updatee   = IWL::Container->new(id => 'updatee');
+
+    $navbar->appendPath('Bar', 'something_else');
+    $navbar->appendPath('Baz', 'baz');
+    $navbar->prependPath('Foo', 'foo');
+    $navbar->appendOption('Alpha', 'alpha');
+    $navbar->appendOption('Beta', 'beta');
+    $navbar->appendOption('Gamma', 'gamma');
+    $navbar->registerEvent('IWL-NavBar-activatePath', 'iwl_demo.pl', {}, {update => 'updatee'});
+    $container->appendChild($navbar, $updatee);
+
+    return $container;
+}
+
+sub generate_progress_bars {
+    my $container = IWL::Container->new(id => 'menus_container');
+    my $progress  = IWL::ProgressBar->new(id => 'progress');
+    my $pulsating = IWL::ProgressBar->new(pulsate => 1, id => 'pulsating');
+    my $script    = IWL::Script->new->setScript("animate_progress_bar.delay(1)");
+
+    $progress->setText("Overall progress: #{percent}")->setValue(0.37);
+    $pulsating->signalConnect(click => '$(this).isPulsating() ? this.setPulsate(false) : this.setPulsate(true)');
+    $container->appendChild($progress, $pulsating, $script);
+    return $container;
+}
+
 sub generate_list {
     my $container = IWL::Container->new(id => 'list_container');
     my $list = IWL::Tree->new(list => 1, id => 'list');
@@ -765,7 +848,7 @@ sub generate_contentbox {
     $chooser->appendOption('window');
     $chooser->appendOption('noresize');
     $chooser->signalConnect(change => "contentbox_chooser_change(this)");
-    $outline->setLabel('Outline resizing');
+    $outline->setLabel('Outline dragging/resizing');
     return $container;
 }
 
@@ -782,6 +865,19 @@ sub generate_druid {
         'IWL-Druid-Page-next', 'iwl_demo.pl', {}, {emitOnce => 1}
     )->setId('first_page');
     $label1->setText('This is page 1');
+
+    return $container;
+}
+
+sub generate_expander {
+    my $container = IWL::Container->new(id => 'expander_container');
+    my $expander = IWL::Expander->new(id => 'expander');
+    my $image = IWL::Image->new(style => {float => 'left'});
+    my $label = IWL::Label->new(expand => 1);
+
+    $container->appendChild($expander);
+    $expander->appendChild($image->set($IWLConfig{IMAGE_DIR} . '/demo/moon.gif'), $label)->setLabel('Moon details');
+    $label->setText('The Moon (Latin: Luna) is Earth\'s only natural satellite and the fifth largest moon in the Solar System. The average centre-to-centre distance from the Earth to the Moon is 384,403 kilometres (238,857 miles),a which is about 30 times the diameter of the Earth. The Moon has a diameter of 3,474 kilometres (2,159 miles)[1] — slightly more than a quarter that of the Earth. This means that the volume of the Moon is only 1/50th that of Earth. The gravitational pull at its surface is about a 1/6th of Earth\'s. The Moon makes a complete orbit around the Earth every 27.3 days, and the periodic variations in the geometry of the Earth–Moon–Sun system are responsible for the lunar phases that repeat every 29.5 days.');
 
     return $container;
 }
@@ -833,6 +929,76 @@ sub generate_file {
     $label->setText('Press the button to upload a file.');
 
     return $container;
+}
+
+sub generate_gmap {
+    my $container = IWL::Container->new(id => 'gmap_container');
+    my $map = IWL::Google::Map->new(id => 'gmap', latitude => 42.60244915107272, longitude => 23.24128746986389, zoom => 9);
+    my $entry = IWL::Entry->new(id => 'updatee', readonly => 1);
+
+    $map->setScaleView('ruler')->setMapTypeControl('menu')->setMapControl('small')->setOverview('mini');
+    $map->setMapType('physical')->setWidth('490px')->addMarker(IWL::Label->new->appendTextType('Hello World!', 'strong'));
+    $map->signalConnect('movestart', "IWL.Status.display('Move from ' + this.getCenter().toString())");
+    $map->updateOnSignal('moveend', $entry, "Move to %c with zoom level: %z");
+    $map->addMarker('Still here', 42, 23);
+    $entry->{text}->setStyle(width => '488px');
+    $container->appendChild($map, $entry);
+
+    return $container;
+}
+
+sub generate_canvas {
+    my $container = IWL::Container->new(id => 'canvas_container');
+    my $canvas = IWL::Canvas->new(id => 'html_canvas');
+    my $moon = IWL::Image->new(id => 'moon')->set($IWLConfig{IMAGE_DIR} . '/demo/moon.gif')->setStyle(display => 'none');
+    my $pi = 4 * atan2(1, 1);
+
+    $canvas->setDimensions(400, 400);
+    $canvas->getContext('2d')->globalAlpha(0.8);
+    $canvas->fillStyle('#626fc2')->fillRect(10, 10, 74, 65);
+    $canvas->fillStyle(65, 12, 62, 0.5)->fillRect(15, 15, 40, 40);
+    $canvas->createLinearGradient(0, 0, 0, 150)->addColorStop(0, '#00ABEB')->addColorStop(0.5, '#fff')->addColorStop(0.5, '#26C000')->addColorStop(1, '#fff');
+    $canvas->createLinearGradient(0, 50, 0, 95, 'gradient2')->addColorStop(0.5, '#000')->addColorStop(1, 0, 0, 0, 0);
+    $canvas->fillStyle('gradient')->strokeStyle('gradient2')->fillRect(25,25,100,100)->clearRect(45,45,60,60)->strokeRect(50,50,50,50);
+    $canvas->createRadialGradient(45, 45, 10, 52, 50, 30)->addColorStop(0, '#A7D30C')->addColorStop(0.9, '#019F62')->addColorStop(1, 1, 159, 98, 0)->fillStyle('gradient')->fillRect(0, 0, 150, 150);
+    $canvas->fillStyle('#000')->strokeStyle('#000');
+    $canvas->beginPath->moveTo(175, 150)->lineTo(200, 175)->lineTo(200, 125)->fill;
+    $canvas->beginPath->arc(175, 175, 50, 0, $pi * 2, 1)->moveTo(210, 175)->arc(175, 175, 30, 0, $pi)->moveTo(165, 165)->arc(160, 165, 5, 0, $pi * 2, 1)->moveTo(195, 165)->arc(190, 165, 5, 0, $pi * 2, 1)->stroke;
+    $canvas->beginPath->moveTo(25, 125)->lineTo(105, 125)->lineTo(25, 205)->fill;
+    $canvas->beginPath->moveTo(125, 225)->lineTo(125, 145)->lineTo(45, 225)->closePath->stroke;
+    $canvas->shadowOffsetX(3)->shadowOffsetY(3)->shadowColor('#92ba6f')->shadowBlur(2);
+    $canvas->fillStyle('#000')->strokeStyle('#000');
+    $canvas->beginPath->moveTo(275, 25)->quadraticCurveTo(225, 25, 225, 62.5)->quadraticCurveTo(225, 100, 250, 100)->quadraticCurveTo(250, 120, 230, 125)->quadraticCurveTo(260, 120, 265, 100)->quadraticCurveTo(325, 100, 325, 62.5)->quadraticCurveTo(325, 25, 275, 25)->stroke;
+    $canvas->beginPath->moveTo(275, 240)->bezierCurveTo(275, 237, 270, 225, 250, 225)->bezierCurveTo(220, 225, 220, 262.5, 220, 262.5)->bezierCurveTo(220, 280, 240, 302, 275, 320)->bezierCurveTo(310, 302, 330, 280, 330, 262.5)->bezierCurveTo(330, 262.5, 330, 225, 300, 225)->bezierCurveTo(285, 225, 275, 237, 275, 240)->fill;
+    $canvas->beginPath->rect(100, 350, 200, 20)->fill;
+    $canvas->drawImage($moon, 50, 300)->drawImage($moon, 100, 300, 55, 55)->drawImage($moon, 10, 10, 30, 30, 310, 140, 50, 61);
+
+    $container->appendChild($moon, $canvas);
+
+    return $container;
+}
+
+sub generate_dnd {
+    my $container = IWL::Container->new(id => 'dnd_container');
+    my $source1 = IWL::Container->new(id => 'source1');
+    my $source2 = IWL::Container->new(id => 'source2');
+    my $view = IWL::Image->new->set($IWLConfig{IMAGE_DIR} . '/demo/moon.gif');
+    my $dest1 = IWL::Container->new(id => 'dest1');
+
+    $source1->setDragSource(outline => 1);
+    $source2->setDragSource(view => $view, revert => 1);
+    $dest1->setDragDest(containment => $container, hoverclass => 'hover');
+    $source1->appendChild(IWL::Label->new->setText('Drag me!'));
+    $dest1->setDragSource(ghosting => 1);
+    $dest1->appendChild(IWL::Label->new->setText('Drop something here'));
+    $dest1->signalConnect('drag_drop', 'dest1_drop(arguments[1], arguments[2])');
+    $dest1->signalConnect('drag_begin', 'this.setOpacity(0.6)');
+    $dest1->signalConnect('drag_end', 'this.setOpacity(1)');
+
+    return $container->appendChild(
+        IWL::Label->new(expand => 1)->appendTextType("The green containers are draggable, while the blue one is both draggable, and accepts the green ones as targets", 'em'),
+        $source1, $dest1, $source2
+    );
 }
 
 sub generate_rpc_events {
@@ -1013,6 +1179,17 @@ sub generate_notebook_test {
     return $container;
 }
 
+sub generate_progressbar_test {
+    my $container   = IWL::Container->new(id => 'progressbar_test_container');
+    my $testlog     = IWL::Container->new(id => 'testlog');
+    my $progressbar = IWL::ProgressBar->new(id => 'progressbar_test');
+    my $script      = IWL::Script->new;
+
+    $script->setScript("run_progressbar_tests()");
+    $container->appendChild($testlog, $progressbar, $script);
+    return $container;
+}
+
 sub generate_spinner_test {
     my $container = IWL::Container->new(id => 'spinner_test_container');
     my $testlog   = IWL::Container->new(id => 'testlog');
@@ -1093,16 +1270,19 @@ sub read_code {
     my ($start, $count) = @_;
     my $counter = 0;
     my $read = 0;
-    my $contents = '';
+    my $content = '';
     local *DEMO;
     open DEMO, "$0";
 
+    $start = "generate_" . $1 if $start =~ /^(\w+)_container$/ && !$count;
+
     while (<DEMO>) {
 	$read++ if $_ =~ /$start/;
-	last if $read && $count == $counter++;
-	$contents .= $_ if $read;
+	last if $read && ($count ? $count == $counter++ : $_ =~ /^}/);
+	$content .= $_ if $read;
     }
     close DEMO;
+    $content .= "}\n" unless $count;
     eval {
 	my %CSS_colors = (
 	    none      => "</span>",
@@ -1147,66 +1327,40 @@ sub read_code {
 	    'File_Name'        => [$CSS_colors{'misc'}, $CSS_colors{'none'}],
 	);
 
-	$contents = $formatter->format_string($contents);
+	$content = $formatter->format_string($content);
     };;
-    return $contents;
+    return $content;
 }
 
 sub show_the_code_for {
     my $code_for = shift;
     my $paragraph = IWL::Label->new;
 
-    if ($code_for eq 'buttons_container') {
-	$paragraph->appendTextType(read_code("generate_buttons", 28), 'pre');
-    } elsif ($code_for eq 'entries_container') {
-	$paragraph->appendTextType(read_code("generate_entries", 25), 'pre');
+    if ($code_for eq 'entries_container') {
+	$paragraph->appendTextType(read_code($code_for), 'pre');
 	$paragraph->appendTextType('...', 'pre');
 	$paragraph->appendTextType(read_code('my \$search = quotemeta \$form\{completion\}', 10), 'pre');
-    } elsif ($code_for eq 'spinners_container') {
-	$paragraph->appendTextType(read_code("generate_spinners", 9), 'pre');
-    } elsif ($code_for eq 'images_container') {
-	$paragraph->appendTextType(read_code("generate_images", 17), 'pre');
-    } elsif ($code_for eq 'labels_container') {
-	$paragraph->appendTextType(read_code("generate_labels", 18), 'pre');
-    } elsif ($code_for eq 'calendars_container') {
-	$paragraph->appendTextType(read_code("generate_calendars", 20), 'pre');
-    } elsif ($code_for eq 'combobox_container') {
-	$paragraph->appendTextType(read_code("generate_combobox", 13), 'pre');
-    } elsif ($code_for eq 'slider_container') {
-	$paragraph->appendTextType(read_code("generate_sliders", 27), 'pre');
-    } elsif ($code_for eq 'iconbox_container') {
-	$paragraph->appendTextType(read_code("generate_iconbox", 23), 'pre');
-    } elsif ($code_for eq 'menus_container') {
-	$paragraph->appendTextType(read_code("generate_menus", 40), 'pre');
-    } elsif ($code_for eq 'list_container') {
-	$paragraph->appendTextType(read_code("generate_list", 45), 'pre');
-    } elsif ($code_for eq 'table_container') {
-	$paragraph->appendTextType(read_code("generate_table", 41), 'pre');
     } elsif ($code_for eq 'tree_container') {
 	$paragraph->appendTextType(read_code("sub build_tree", 119), 'pre');
         $paragraph->appendTextType(read_code("Tree row handlers", 21), 'pre');
         $paragraph->appendTextType(');', 'pre');
-    } elsif ($code_for eq 'contentbox_container') {
-	$paragraph->appendTextType(read_code("generate_contentbox", 24), 'pre');
-    } elsif ($code_for eq 'accordions_container') {
-	$paragraph->appendTextType(read_code("generate_accordions", 20), 'pre');
     } elsif ($code_for eq 'druid_container') {
-	$paragraph->appendTextType(read_code("generate_druid", 16), 'pre');
+	$paragraph->appendTextType(read_code($code_for), 'pre');
 	$paragraph->appendTextType(read_code("Druid handlers", 54), 'pre');
-    } elsif ($code_for eq 'notebook_container') {
-	$paragraph->appendTextType(read_code("generate_notebook", 15), 'pre');
-    } elsif ($code_for eq 'tooltips_container') {
-	$paragraph->appendTextType(read_code("generate_tooltips", 21), 'pre');
-    } elsif ($code_for eq 'file_container') {
-	$paragraph->appendTextType(read_code("generate_file", 12), 'pre');
+    } elsif ($code_for eq 'navbar_container') {
+	$paragraph->appendTextType(read_code($code_for), 'pre');
+	$paragraph->appendTextType(read_code("NavBar handlers", 27), 'pre');
     } elsif ($code_for eq 'rpc_events_container') {
-	$paragraph->appendTextType(read_code("generate_rpc_events", 25), 'pre');
+	$paragraph->appendTextType(read_code($code_for), 'pre');
 	$paragraph->appendTextType(read_code("Event row handlers", 21), 'pre');
     } elsif ($code_for eq 'rpc_pagecontrol_container') {
-	$paragraph->appendTextType(read_code("generate_rpc_pagecontrol", 12), 'pre');
+	$paragraph->appendTextType(read_code($code_for), 'pre');
 	$paragraph->appendTextType(read_code("PageControl handlers", 28), 'pre');
     } else {
-	$paragraph->setText('Code not available');
+        my $code = read_code($code_for);
+	$code
+            ? $paragraph->appendTextType($code, 'pre')
+            : $paragraph->setText('Code not available');
     }
 
     return $paragraph->getContent;

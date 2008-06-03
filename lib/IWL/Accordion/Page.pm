@@ -7,6 +7,7 @@ use strict;
 
 use base qw(IWL::Container);
 
+use IWL::Text;
 use IWL::String qw(randomize);
 
 =head1 NAME
@@ -15,11 +16,11 @@ IWL::Accordion::Page - a page used in a accordion
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::Accordion::Page>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::Accordion::Page>
 
 =head1 DESCRIPTION
 
-The accordion page widget is a helper widget used by the IWL::Accordion(3pm)
+The accordion page widget is a helper widget used by the L<IWL::Accordion>
 
 =head1 CONSTRUCTOR
 
@@ -35,7 +36,7 @@ sub new {
 
     my $self = $class->SUPER::new(tag => 'h1');
 
-    $self->__init(%args);
+    $self->_init(%args);
 
     return $self;
 }
@@ -48,7 +49,7 @@ sub new {
 
 Appends the object to the page
 
-Parameter: B<OBJECT> - the IWL::Object(3pm) to be appended
+Parameter: B<OBJECT> - the L<IWL::Object> to be appended
 
 =cut
 
@@ -63,7 +64,7 @@ sub appendContent {
 
 Prepends the object to the page
 
-Parameter: B<OBJECT> - the IWL::Object(3pm) to be prepended 
+Parameter: B<OBJECT> - the L<IWL::Object> to be prepended 
 
 =cut
 
@@ -154,9 +155,7 @@ sub _setupDefaultClass {
     $self->{__content}->prependClass('accordion_page_content');
 }
 
-# Internal
-#
-sub __init {
+sub _init {
     my ($self, %args) = @_;
     my $page = IWL::Container->new;
 

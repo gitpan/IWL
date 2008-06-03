@@ -15,7 +15,7 @@ IWL::Page::Head - the <head> markup
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Page::Head>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Page::Head>
 
 =head1 DESCRIPTION
 
@@ -27,7 +27,7 @@ sub new {
     my $proto = shift;
     my $class = ref($proto) || $proto;
 
-    my $self = $class->SUPER::new();
+    my $self = $class->SUPER::new(@_);
 
     $self->{_tag} = "head";
 

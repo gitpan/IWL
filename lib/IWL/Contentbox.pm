@@ -30,7 +30,7 @@ IWL::Contentbox - a content box
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::Contentbox>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::Contentbox>
 
 =head1 DESCRIPTION
 
@@ -90,7 +90,7 @@ sub new {
 
     my $self = $class->SUPER::new();
 
-    $self->__init(%args);
+    $self->_init(%args);
 
     return $self;
 }
@@ -103,7 +103,7 @@ sub new {
 
 Sets the title of the content box.
 
-Parameters: B<WIDGET> - the widget of type IWL::Widget(3pm) with which to fill the title
+Parameters: B<WIDGET> - the widget of type L<IWL::Widget> with which to fill the title
 
 =cut
 
@@ -134,7 +134,7 @@ sub appendTitleText {
 
 Sets the header of the content box.
 
-Parameters: B<WIDGET> - the widget of type IWL::Widget(3pm) with which to fill the header 
+Parameters: B<WIDGET> - the widget of type L<IWL::Widget> with which to fill the header 
 
 =cut
 
@@ -171,7 +171,7 @@ sub appendHeaderText {
 
 Sets the content of the content box.
 
-Parameters: B<WIDGET> - the widget of type IWL::Widget(3pm) with which to fill the content
+Parameters: B<WIDGET> - the widget of type L<IWL::Widget> with which to fill the content
 
 =cut
 
@@ -206,7 +206,7 @@ sub appendContentText {
 
 Sets the footer of the content box.
 
-Parameters: B<WIDGET> - the widget of type IWL::Widget(3pm) with which to fill the footer 
+Parameters: B<WIDGET> - the widget of type L<IWL::Widget> with which to fill the footer 
 
 =cut
 
@@ -277,13 +277,13 @@ Window without resizing
 
 =back
 
-=item B<OPTIONS> - a hashref of options for use with the different types:
+=item B<OPTIONS> - a hash(ref) of options for use with the different types:
 
 =over 12
 
 =item B<outline>
 
-If true, an outline of the contentbox will apear when it is resized.
+If true, an outline of the contentbox will apear when it is dragged/resized.
 
 =back
 
@@ -292,11 +292,15 @@ If true, an outline of the contentbox will apear when it is resized.
 =cut 
 
 sub setType {
-    my ($self, $type, $options) = @_;
+    my ($self, $type) = (shift, shift);
+    my $options = {};
 
     return if !exists TYPE->{$type};
-    my $ref = ref $options;
-    $options = {} unless $ref && $ref == 'HASH';
+    if (1 == @_ && ref $_[0] eq 'HASH') {
+        $options = $_[0];
+    } elsif (!(@_ % 2)) {
+        $options = {@_};
+    }
 
     $self->{_options}{type} = $type;
     $self->{_options}{typeOptions} = $options;
@@ -452,9 +456,7 @@ sub _setupDefaultClass {
     return $self;
 }
 
-# Internal
-#
-sub __init {
+sub _init {
     my ($self, %args) = @_;
     my $top     = IWL::Container->new;
     my $topr    = IWL::Container->new;
@@ -525,13 +527,15 @@ sub __init {
     $self->{__footerColorIndex} = 0;
 
     $self->_constructorArguments(%args);
-    $self->requiredJs('base.js', 'dist/dragdrop.js', 'resizer.js', 'contentbox.js');
+    $self->requiredJs('base.js', 'dist/dragdrop.js', 'dnd.js', 'resizer.js', 'contentbox.js');
     $self->{_customSignals} = {close => [], hide => [], show => []};
 
     # Callbacks
     return $self;
 }
 
+# Internal
+#
 sub __set_type {
     my ($self) = @_;
     my $type = $self->{_options}{type};

@@ -17,11 +17,11 @@ IWL::Notebook::Tab - a tab used in a notebook
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Notebook::Tab>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Notebook::Tab>
 
 =head1 DESCRIPTION
 
-The notebook tab widget is a helper widget used by the IWL::Notebook(3pm)
+The notebook tab widget is a helper widget used by the L<IWL::Notebook>
 
 =head1 CONSTRUCTOR
 
@@ -55,7 +55,7 @@ sub new {
 
     my $self = $class->SUPER::new();
 
-    $self->__init(%args);
+    $self->_init(%args);
 
     return $self;
 }
@@ -68,7 +68,7 @@ sub new {
 
 Appends the object to the page of a tab
 
-Parameter: B<OBJECT> - the IWL::Object(3pm) to be appended
+Parameter: B<OBJECT> - the L<IWL::Object> to be appended
 
 =cut
 
@@ -83,7 +83,7 @@ sub appendPage {
 
 Prepends the object to the page of a tab
 
-Parameter: B<OBJECT> - the IWL::Object(3pm) to be prepended 
+Parameter: B<OBJECT> - the L<IWL::Object> to be prepended 
 
 =cut
 
@@ -172,9 +172,7 @@ sub _setupDefaultClass {
     $self->{__anchor}->prependClass($self->{_defaultClass} . '_anchor');
 }
 
-# Internal
-#
-sub __init {
+sub _init {
     my ($self, %args) = @_;
     my $page = IWL::Container->new;
     my $anchor = IWL::Anchor->new;

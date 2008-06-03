@@ -20,11 +20,11 @@ IWL::Tree::Row - a row widget
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Table::Row> -> L<IWL::Tree::Row>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Table::Row> -> L<IWL::Tree::Row>
 
 =head1 DESCRIPTION
 
-The Row widget provides a row for IWL::Tree(3pm). It inherits from IWL::Table::Row(3pm).
+The Row widget provides a row for L<IWL::Tree>. It inherits from L<IWL::Table::Row>.
 
 =head1 CONSTRUCTOR
 
@@ -59,6 +59,16 @@ Fires when the row has collapsed
 =item B<expand>
 
 Fires when the row has expanded
+
+=back
+
+=head1 EVENTS
+
+=over 4
+
+=item B<IWL-Tree-Row-expand>
+
+Emitted when a row is expanded. A custom event handler is used. The perl callback for it has to return an arrayref of L<IWL::Tree::Row>s, which will be added as children of the row.
 
 =back
 
@@ -458,14 +468,17 @@ sub _realize {
 
 sub _expandEvent {
     my ($event, $handler) = @_;
+    my $response = IWL::Response->new;
 
-    IWL::Object::printJSONHeader;
     my ($list, $extras) = ('CODE' eq ref $handler)
       ? $handler->($event->{params}, $event->{options}{all})
       : (undef, undef);
     $list = [] unless ref $list eq 'ARRAY';
 
-    print '[' . join(',', map {$_->{__ignoreChildren} = 1; $_->getJSON} @$list) . ']';
+    $response->send(
+        content => '[' . join(',', map {$_->{__ignoreChildren} = 1; $_->getJSON} @$list) . ']',
+        header => IWL::Object::getJSONHeader,
+    );
 }
 
 sub _registerEvent {

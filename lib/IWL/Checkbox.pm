@@ -16,7 +16,7 @@ IWL::Checkbox - a checkbox
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Input> -> L<IWL::Checkbox>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Input> -> L<IWL::Checkbox>
 
 =head1 DESCRIPTION
 
@@ -48,7 +48,7 @@ sub new {
 
     my $self = $class->SUPER::new();
 
-    $self->__init(%args);
+    $self->_init(%args);
 
     return $self;
 }
@@ -120,7 +120,7 @@ sub isChecked {
 
 =item B<extractState> (B<STATE>)
 
-Update the IWL::Stash(3pm) B<STATE> according to the input state.
+Update the L<IWL::Stash> B<STATE> according to the input state.
 
 =cut
 
@@ -140,7 +140,7 @@ sub extractState {
 
 =item B<applyState> (B<STATE>)
 
-Update the input element according to the IWL::Stash(3pm) B<STATE>
+Update the input element according to the L<IWL::Stash> B<STATE>
 object.  The B<STATE> will get modified, i.e. the "used" element
 will be shifted from the according slot (name attribute) of the
 state.
@@ -195,10 +195,8 @@ sub _setupDefaultClass {
     return $self->{_label}->prependClass($self->{_defaultClass} . '_label');
 }
 
-# Internal
-#
 # FIXME create an IWL::InputLabel, so that the necessary signals are inherited from IWL::Input
-sub __init {
+sub _init {
     my ($self, %args) = @_;
     my $label = IWL::Label->new(expand => 0);
 

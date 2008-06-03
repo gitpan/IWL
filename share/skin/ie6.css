@@ -64,7 +64,9 @@ iframe.qframe {
     position: absolute;
     filter: progid:DXImageTransform.Microsoft.alpha(style=0,opacity=0);
 }
-
+div.iconbox {
+    zoom: 1;
+}
 iframe.completion {
     z-index: 49;
 }
@@ -102,4 +104,14 @@ li.menu_item_selected .menu_item_label_parent {
 }
 li.menu_item_selected, li.menubar_item_selected {
     background-color: #8b9fbb;
+}
+
+div.expander .expander_icon {
+    background: url(/iwl/skin/default/images/expander/arrows.gif) no-repeat -16px 0px;
+}
+div.expander_collapsed .expander_icon {
+    background: url(/iwl/skin/default/images/expander/arrows.gif) no-repeat;
+}
+.progress_bar_label {
+    margin: -16px 0 0 0;
 }

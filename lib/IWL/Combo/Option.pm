@@ -15,7 +15,7 @@ IWL::Combo::Option - an option widget for the combobox
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Combo::Option>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Combo::Option>
 
 =head1 DESCRIPTION
 
@@ -35,9 +35,8 @@ sub new {
 
     my $self = $class->SUPER::new(%args);
 
-    $self->{_tag}     = "option";
-    $self->{_noChildren}     = 0;
-    $self->{_removeEmpty} = 1;
+    $self->{_tag}        = "option";
+    $self->{_noChildren} = 0;
 
     return $self;
 }

@@ -16,7 +16,7 @@ IWL::Menubar - a menubar widget
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::List> -> L<IWL::Menubar>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::List> -> L<IWL::Menubar>
 
 =head1 DESCRIPTION
 
@@ -44,9 +44,7 @@ sub new {
     my ($proto, %args) = @_;
     my $class = ref($proto) || $proto;
 
-    my $self = $class->SUPER::new;
-
-    $self->IWL::Menubar::__init(%args);
+    my $self = $class->SUPER::new(%args);
 
     return $self;
 }
@@ -158,10 +156,9 @@ sub _realize {
     return $self->_appendInitScript("IWL.Menu.create('$id', {$options});");
 }
 
-# Internal
-#
-sub __init {
+sub _init {
     my ($self, %args) = @_;
+    $self->SUPER::_init(%args);
     $self->{_defaultClass} = 'menubar';
     $args{id} = randomize($self->{_defaultClass}) if !$args{id};
 
@@ -170,6 +167,8 @@ sub __init {
     $self->{_customSignals} = {menu_item_activate => []};
 }
 
+# Internal
+#
 sub __setup_menu_separator {
     my $self = shift;
     my $mi = IWL::Widget->new;

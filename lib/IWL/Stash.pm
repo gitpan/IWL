@@ -122,6 +122,7 @@ sub setValues {
     $self->{__dirty} = $self->__compare ($key, $values)
 	unless $self->{__dirty};
     $self->{__state}->{$key} = $values;
+    return $self;
 }
 
 sub pushValues {
@@ -140,6 +141,7 @@ sub pushValues {
     }
     $self->{__dirty} = 1;
     push @{$self->{__state}->{$key}}, @values;
+    return $self;
 }
 
 sub deleteValues {
@@ -251,7 +253,16 @@ sub mergeState {
 	$self->pushValues ($key, $merger->getValues ($key));
     }
 
-    return 1;
+    return $self;
+}
+
+sub overrideState {
+    my ($self, $overrider) = @_;
+
+    $self->setValues($_, $overrider->getValues($_))
+        foreach $overrider->keys;
+
+    return $self;
 }
 
 sub searchKey {
@@ -572,8 +583,14 @@ B<FLAG>.
 =item B<mergeState MERGER>
 
 "Merges" the state B<MERGER> into the state.  That means, that input
-fields present in B<MERGER> will unconditionally clobber the respecting
+fields present in B<MERGER> will be appended to the respecting
 fields in the original state object.
+
+=item B<overrideState> (B<OVERRIDE>)
+
+Uses the B<OVERRIDE> stash to extend the current one. New fields are added
+and fields that exist both in the current and override stash, are overwritten
+with the value from the override stash.
 
 =item B<searchKey KEY, REG>
 
@@ -590,7 +607,7 @@ Returns true if an input field with the name 'KEY' exists, false otherwise.
 
 =item B<equals OTHER_STATE>
 
-Compares the object to another IWL::Stash(3pm).  Returns true if the two
+Compares the object to another L<IWL::Stash>.  Returns true if the two
 objects are equal, false otherwise.
 
 =item B<toURIParams>
@@ -604,7 +621,7 @@ The method cannot fail.
 
 =item B<toHiddenInputs>
 
-Returns an IWL::Container(3pm) with hidden input fields that completely
+Returns an L<IWL::Container> with hidden input fields that completely
 represents the object.
 
 The method cannot fail.
@@ -628,7 +645,7 @@ Sets the internal "__state" variable to the reference passed as a parameter of t
 
 =head1 SEE ALSO
 
-IWL::Object(3pm), CGI(3pm), perl(1)
+L<IWL::Object>, CGI(3pm), perl(1)
 
 
 =head1 LICENCE AND COPYRIGHT

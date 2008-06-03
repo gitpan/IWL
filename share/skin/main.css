@@ -29,6 +29,15 @@ tbody.table_body tr td, tbody.table_row tr th {
     vertical-align: middle;
 }
 
+.iwl-unselectable {
+    -moz-user-select: none;
+    user-select: none;
+}
+
+.iwl-clear {
+    clear: both;
+}
+
 /* Tree */
 table.tree {
 /*    border: 1px solid red;*/
@@ -213,12 +222,10 @@ button.button, input.inputbutton {
 .entry, .spinner {
     border: 1px solid #7F9DB9;
     background-image:url('/iwl/skin/default/images/entry/entry_bg.gif');
-    font-size: 16px;
-    line-height: 16px;
     margin: 1px 0;
 }
 
-input.entry_text, input.entry_text_default, .spinner_text {
+input.entry_text, .spinner_text {
     color: #525C65;
     border: none;
     background: none;
@@ -229,6 +236,9 @@ input.entry_text, input.entry_text_default, .spinner_text {
 input.entry_text_default {
     color: #9aadbe;
 }
+input.entry_text_blur {
+    font-style: italic;
+}
 
 .entry_left, .entry_right,
 .spinner_left, .spinner_right {
@@ -237,12 +247,10 @@ input.entry_text_default {
     vertical-align: middle;
 }
 .entry_left, .spinner_left {
-    padding-left: 3px; /* do NOT use margin*/
-    padding-right: 1px;
+    padding: 1px 2px 1px 1px;
 }
 .entry_right, .spinner_right {
-    padding-left: 1px;
-    padding-right: 2px; /* do NOT use margin*/
+    padding: 1px 1px 1px 2px;
 }
 
 div.entry_receiver {
@@ -951,7 +959,6 @@ div.hbox_end {
 div.navbar {
    padding-top: 3px;
    padding-bottom: 3px;
-   background-color:#efefef;
 }
 span.navbar_crumb_con {
 }
@@ -959,6 +966,7 @@ select.navbar_combo {
     color: inherit;
     background: inherit;
     border: 1px inset;
+    margin-left: 1px;
 }
 select.navbar_combo option {
     background: white;
@@ -966,8 +974,11 @@ select.navbar_combo option {
 }
 span.navbar_crumb {
     cursor: pointer;
+    margin: 0 1px;
 }
 span.navbar_delim {
+    color: #555;
+    font-weight: bold;
 }
 
 /* Druid */
@@ -1314,6 +1325,7 @@ div.tooltip_content {
 }
 .pagecontrol_page_entry {
     float: left;
+    margin-right: 3px;
 }
 
 /* Accordions */
@@ -1496,4 +1508,59 @@ div.tooltip_content {
 
 .calendar caption {
     font-size: 0.8em;
+}
+
+/* Expander */
+.expander_icon {
+    width: 16px;
+    height: 16px;
+    float: left;
+    margin-right: 2px;
+}
+
+.expander .expander_icon {
+    background: url(/iwl/skin/default/images/expander/arrows.png) no-repeat -16px 0px;
+}
+.expander_collapsed .expander_icon {
+    background: url(/iwl/skin/default/images/expander/arrows.png) no-repeat;
+}
+.expander_content {
+    clear: both;
+}
+.expander_label {
+    font-size: 13px;
+}
+
+/* Progress Bar */
+.progress_bar {
+    border: 1px solid #7F9DB9;
+    background-image:url('/iwl/skin/default/images/entry/entry_bg.gif');
+    height: 16px;
+    margin: 1px;
+}
+
+.progress_bar_block {
+    height: 16px;
+    background: #81aec0;
+}
+
+.progress_bar_label {
+    line-height: 14px;
+    font-size: 14px;
+    width: 100%;
+    margin: -16px 4px 0 0;
+    text-align: center;
+    color: #000 !important;
+}
+
+/* Google Map */
+.google_map {
+    width: 500px;
+    height: 400px;
+}
+
+/* DND */
+.draggable_outline {
+    background: #eeeeee;
+    border: 1px solid  #6a81a3;
 }

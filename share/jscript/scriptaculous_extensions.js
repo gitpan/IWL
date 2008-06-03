@@ -11,8 +11,8 @@ Object.extend(Effect, {
 	    new Effect.ScrollTo(target);
 	    Event.stop(event);
 	  }
-	}.bindAsEventListener(element))
-      })
+        }.bindAsEventListener(element));
+      });
       window.smoothScroll = true;
     } else {
       Event.observe(window, "load", function () {
@@ -52,16 +52,24 @@ Object.extend(Effect, {
         parent_element.scrollLeft = scrollOffsets.left, parent_element.scrollTop = p.round()
       }
     );
-  }
-});
-
-Object.extend(Ajax.Autocompleter.prototype, {
-  fixIEOverlapping: function() {
-    Position.clone(this.update, this.iefix, {setTop:(!this.update.style.height)});
-    var completionIndex = $$('ul.completion')[0];
-    completionIndex = completionIndex ? completionIndex.getStyle('zIndex') : 2;
-    this.iefix.style.zIndex = completionIndex - 1;
-    this.update.style.zIndex = completionIndex;
-    Element.show(this.iefix);
+  },
+  Pulsate: function(element) {
+    element = $(element);
+    var options = Object.extend({
+      distance: 20,
+      duration: 0.5,
+      afterFinish: Prototype.emptyFunction
+    }, arguments[1] || {});
+    var distance = parseFloat(options.distance);
+    var split = parseFloat(options.duration) / 10.0;
+    var oldStyle = {
+      top: element.getStyle('top'),
+      left: element.getStyle('left') };
+      return new Effect.Move(element,
+        { x:  distance, y: 0, duration: split, afterFinishInternal: function(effect) {
+      new Effect.Move(effect.element,
+        { x: -distance, y: 0, duration: split, afterFinish: options.afterFinish, afterFinishInternal: function(effect) {
+          effect.element.undoPositioned().setStyle(oldStyle);
+    }}) }});
   }
 });

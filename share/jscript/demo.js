@@ -28,8 +28,31 @@ function sortTheMoney(col_index) {
     };
 }
 
+function animate_progress_bar(backwards) {
+    var progress = $('progress');
+    if (!progress) return;
+    var value = progress.getValue();
+    if (value == 1 && !backwards)
+        return animate_progress_bar.bind(this, !backwards).delay(1);
+    if (value == 0 && backwards)
+        return animate_progress_bar.bind(this, !backwards).delay(1);
+
+    if (backwards)
+        value -= 0.01;
+    else
+        value += 0.01;
+    progress.setValue(value);
+    animate_progress_bar.bind(this, backwards).delay(0.1);
+}
+
+function dest1_drop(dragEl, dropEl) {
+    if (dragEl.parentNode)
+        dragEl.remove();
+}
+
 function run_prototype_tests() {
     var test_span;
+    document.insertScript(IWL.Config.JS_DIR + '/entry.js', {removeScriptElement: true});
     new Test.Unit.Runner({
         setup: function() {
             test_span = new Element('span', {style: "display: none", id: 'test_span'});
@@ -44,10 +67,10 @@ function run_prototype_tests() {
             var results = $H(Prototype.Browser).map(function(engine){
                 return engine;
             }).partition(function(engine){
-                return engine[1] === true
+                return engine[1] === true;
             });
             var trues = results[0], falses = results[1];
-          
+
             // we should have definite trues or falses here
             trues.each(function(result){
                     assert(result[1] === true);
@@ -85,7 +108,7 @@ function run_prototype_tests() {
             if(navigator.userAgent.indexOf('Gecko') > -1 && navigator.userAgent.indexOf('KHTML') == -1) {
                 info('Running on Gecko');
                 assert(Prototype.Browser.Gecko);
-            } 
+            }
         }},
         testEventMisc: function() { with(this) {
             assertEqual(32, Event.KEY_SPACE);
@@ -109,7 +132,7 @@ function run_prototype_tests() {
             test_span.emitSignal('test:event');
             assert(!fired1, "Disconnected callback1");
             assert(fired2, "Disconnected callback1");
-            
+
             fired2 = false;
             assertIdentical(test_span, test_span.signalDisconnectAll('test:event'));
             test_span.emitSignal('test:event');
@@ -135,13 +158,16 @@ function run_prototype_tests() {
             test_span.firstChild.appendChild(new Element('select', {name: 'select'})).appendChild(new Element('option', {value: 'foo'}));
             test_span.down(1).appendChild(new Element('input', {type: 'text', value: 0.17}));
             test_span.down(2).appendChild(new Element('div', {className: 'slider', name: 'slider'})).control = {value: 0.26};
+            test_span.down(2).appendChild(new Element('div', {className: 'entry', id: 'e'}).update(new Element('input', {className: 'entry_text', value: 15, id: 'e_text', name: 'entry'})));
             test_span.firstChild.appendChild(new Element('textarea', {id: 'textarea'})).value = 'Some text';
+            IWL.Entry.create(test_span.select('.entry').first());
             var params = test_span.getControlElementParams();
             assertInstanceOf(Hash, params, 'Params hash');
             assert(!params.values().include(0.17), 'Doesn\'t have unnamed elements');
             assertEqual('Some text', params.get('textarea'), 'Textarea param');
             assertEqual('foo', params.get('select'), 'Select param');
             assertEqual(0.26, params.get('slider'), 'Slider param');
+            assertEqual(15, params.get('entry'), 'Entry param');
 
             assert(test_span.down().childElements()[1].checkValue({reg: /^(?:foo|bar)$/}), 'Regular expression');
             assert(test_span.down(1).childElements()[1].checkValue({range: $R(0,1)}), 'Range');
@@ -188,7 +214,7 @@ function run_prototype_tests() {
             window.evalScriptsCounter = 0;
             ('foo <script>evalScriptsCounter++<'+'/script>bar').evalScripts();
             assertEqual(1, evalScriptsCounter);
-            
+
             var stringWithScripts = '';
             (3).times(function(){ stringWithScripts += 'foo <script>evalScriptsCounter++<'+'/script>bar' });
             stringWithScripts.evalScripts();
@@ -198,20 +224,6 @@ function run_prototype_tests() {
             ('foo <script src="' + IWL.Config.JS_DIR + '/menu.js"><'+'/script>bar').evalScripts();
             wait(2000, function() { assertEqual('object', typeof IWL.Menu); });
             window.evalScriptsCounter = undefined;
-        }},
-        testArrays: function() { with(this) {
-            var array = [1,2,3,4,5,6];
-            assertEnumEqual([2,3,4], array.slice(1, 3), "1");
-            assertEnumEqual([1,2,3,4,5,6], array, "2");
-            assertEnumEqual([5], array.slice(-2), "3");
-            assertEnumEqual([], array.slice(-2, 0), "4");
-            assertEnumEqual([], array.slice(0, 0), "5");
-            assertEnumEqual([3], array.slice(2), "6");
-            assertEnumEqual([3], array.slice(2, 1), "7");
-            assertEnumEqual([2,3,4], array.slice($R(1,3)), "8");
-            assertEnumEqual([6,1,2,3,4], array.slice($R(-1,3)), "9");
-            assertEnumEqual([4,5,6], array.slice($R(-3,-1)), "10");
-            assertEnumEqual([1], array.slice(0), "11");
         }},
         testObjects: function() { with(this) {
             assert(!Object.isObject([]));
@@ -360,7 +372,7 @@ function run_base_tests() {
                     {responseCallback: function(json) { eval(json.data); this.proceed() }.bind(this)}));
 
             delay(function() {
-                assertEqual("Test: 1, Foo: bar", res1.innerHTML); 
+                assertEqual("Test: 1, Foo: bar", res1.innerHTML);
                 assert(!cancelled.innerHTML);
 
                 test_span.writeAttribute('iwl:RPCEvents', "%7B%22IWL-Object-testEvent2%22%3A%20%5B%22iwl_demo.pl%22%2C%20%7B%22test%22%3A%201%7D%5D%7D");
@@ -790,7 +802,7 @@ function run_contentbox_tests() {
             assertEqual(contentbox, contentbox.setType('resize'), "11");
             assertEqual('resize', contentbox.options.type, "12");
             assertInstanceOf(Resizer, contentbox._resizer, "13");
-            contentbox.setType('none')
+            contentbox.setType('none');
             assert($H(contentbox._resizer.handlers).keys().length == 0, "14");
 
             assertEqual(contentbox, contentbox.setType('dialog'), "15");
@@ -799,7 +811,7 @@ function run_contentbox_tests() {
             assert(Draggables.drags.include(contentbox._draggable), "18");
             assertInstanceOf(Resizer, contentbox._resizer, "19");
             assert($H(contentbox._resizer.handlers).keys().length > 0, "20");
-            contentbox.setType('none', "21")
+            contentbox.setType('none', "21");
             assert($H(contentbox._resizer.handlers).keys().length == 0, "22");
             assert(!Draggables.drags.include(contentbox._draggable), "23");
 
@@ -813,7 +825,7 @@ function run_contentbox_tests() {
             assert(Object.isElement(contentbox.closeButton));
             assert(contentbox.closeButton.hasClassName(className + '_close'));
             assert('contentbox_test_close', contentbox.closeButton.id);
-            contentbox.setType('none')
+            contentbox.setType('none');
             assert($H(contentbox._resizer.handlers).keys().length == 0);
             assert(!Draggables.drags.include(contentbox._draggable));
             assert(!contentbox.closeButton);
@@ -825,7 +837,7 @@ function run_contentbox_tests() {
             assert(Object.isElement(contentbox.closeButton));
             assert(contentbox.closeButton.hasClassName(className + '_close'));
             assert('contentbox_test_close', contentbox.closeButton.id);
-            contentbox.setType('none')
+            contentbox.setType('none');
             assert(!Draggables.drags.include(contentbox._draggable));
             assert(!contentbox.closeButton);
         }},
@@ -946,7 +958,7 @@ function run_druid_tests() {
             assertEqual(druid, druid.removePage(druid.pages[3]), "30");
             assertEqual(4, druid.pages.length, "31");
             wait(100, function() {
-                assert(removed, "32")
+                assert(removed, "32");
             });
         }},
         testPageSelection: function() { with(this) {
@@ -1180,7 +1192,7 @@ function run_menu_tests() {
             assertEqual(menu.menuItems[0], menu.menuItems[0].setDisabled(true));
             assert(menu.menuItems[0].isNotEnabled());
             assert(!menu.menuItems[0].setSelected(true));
-            assertEqual(menu.menuItems[1], menu.menuItems[1].activate())
+            assertEqual(menu.menuItems[1], menu.menuItems[1].activate());
             assertEqual(menu, menu.bindToWidget('testlog', 'click'));
             wait(200, function() {
                 assert(change);
@@ -1263,6 +1275,42 @@ function run_notebook_tests() {
                 assert(unselected);
                 assert(global_selected);
             });
+        }}
+    }, 'testlog');
+}
+
+function run_progressbar_tests() {
+    var pb = $('progressbar_test');
+    var className = $A(pb.classNames()).first();
+    new Test.Unit.Runner({
+        testParts: function() { with(this) {
+            assert(Object.isElement(pb.block));
+            assert(Object.isElement(pb.label));
+            assert(pb.block.hasClassName(className + '_block'));
+            assert(pb.label.hasClassName(className + '_label'));
+        }},
+        testMethods: function() { with(this) {
+            var changed = false;
+            pb.signalConnect('iwl:change', function() { changed = true });
+
+            assertEqual(0, pb.value);
+            assertEqual(pb.value, pb.getValue());
+            assertEqual(pb, pb.setValue(0.56));
+            assertEqual(0.56, pb.value);
+            assertEqual(pb, pb.setValue(1.56));
+            assertEqual(1, pb.getValue());
+            assertEqual(pb, pb.setValue(-12));
+            assertEqual(0, pb.value);
+            assertEqual(pb, pb.setText('foo'));
+            assertEqual('foo', pb.getText());
+            assertEqual(pb, pb.setText('bar #{percent}'));
+            assertEqual('bar #{percent}', pb.getText());
+            assert(!pb.isPulsating());
+            assertEqual(pb, pb.setPulsate(true));
+            assert(pb.isPulsating());
+            assertEqual(pb, pb.setValue(0.76));
+            assert(!pb.isPulsating());
+            wait(100, function() { assert(changed) });
         }}
     }, 'testlog');
 }

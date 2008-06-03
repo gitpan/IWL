@@ -13,7 +13,7 @@ IWL::Page::Meta - a meta object
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Page::Meta>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Page::Meta>
 
 =head1 DESCRIPTION
 
@@ -31,7 +31,7 @@ sub new {
     my ($proto, %args) = @_;
     my $class = ref($proto) || $proto;
 
-    my $self = $class->SUPER::new();
+    my $self = $class->SUPER::new(%args);
 
     $self->{_tag}  = "meta";
     $self->{_noChildren} = 1;

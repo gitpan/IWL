@@ -7,6 +7,7 @@ use strict;
 
 use base 'IWL::Widget';
 
+use IWL::Text;
 use IWL::Table::Cell;
 use IWL::String qw(randomize);
 
@@ -16,7 +17,7 @@ IWL::Table::Row - a row widget
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Table::Row>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Table::Row>
 
 =head1 DESCRIPTION
 
@@ -56,7 +57,7 @@ sub new {
 
 Adds a header cell to the row, with B<OBJECT> as it's content.
 
-Parameters: B<OBJECT> - the IWL::Object(3pm), B<ATTRS> - hash of attributes for the cell
+Parameters: B<OBJECT> - the L<IWL::Object>, B<ATTRS> - hash of attributes for the cell
 
 =cut
 
@@ -70,7 +71,7 @@ sub appendHeaderCell {
 
 Prepends a header cell to the row, with B<OBJECT> as it's content.
 
-Parameters: B<OBJECT> - the IWL::Object(3pm), B<ATTRS> - hash of attributes for the cell
+Parameters: B<OBJECT> - the L<IWL::Object>, B<ATTRS> - hash of attributes for the cell
 
 =cut
 
@@ -112,7 +113,7 @@ sub prependTextHeaderCell {
 
 Adds a regular cell to the row, with B<OBJECT> as it's content.
 
-Parameters: B<OBJECT> - the IWL::Object(3pm), B<ATTRS> - hash of attributes for the cell
+Parameters: B<OBJECT> - the L<IWL::Object>, B<ATTRS> - hash of attributes for the cell
 
 =cut
 
@@ -126,7 +127,7 @@ sub appendCell {
 
 Prepends a regular cell to the row, with B<OBJECT> as it's content.
 
-Parameters: B<OBJECT> - the IWL::Object(3pm), B<ATTRS> - hash of attributes for the cell
+Parameters: B<OBJECT> - the L<IWL::Object>, B<ATTRS> - hash of attributes for the cell
 
 =cut
 

@@ -15,7 +15,7 @@ IWL::Combo - a combo box widget
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Input> -> L<IWL::Combo>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Input> -> L<IWL::Combo>
 
 =head1 DESCRIPTION
 
@@ -107,7 +107,7 @@ sub isMultiple {
 
 =item B<extractState> (B<STATE>)
 
-Update the IWL::Stash(3pm) B<STATE> according to the combo state,
+Update the L<IWL::Stash> B<STATE> according to the combo state,
 ie. reflect the selected and unselected entries.
 
 Note that this method does not work absolutely correct if you have
@@ -170,9 +170,10 @@ sub __createOption {
     my $option = IWL::Combo::Option->new;
 
     $option->setSelected($selected);
-    $value = $text unless defined $value;
-    $option->setValue($value);
-    return $option->setText($text);
+    $value = $text if $text && !defined $value;
+    $option->setValue($value) if $value;
+    $option->setText($text) if $text;
+    return $option;
 }
 
 1;

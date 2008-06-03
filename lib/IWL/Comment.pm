@@ -7,13 +7,15 @@ use strict;
 
 use base 'IWL::Object';
 
+use IWL::String qw(escape randomize);
+
 =head1 NAME
 
 IWL::Comment - a simple comment object
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Text>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Text>
 
 =head1 DESCRIPTION
 
@@ -31,7 +33,7 @@ sub new {
     my ($proto, $content) = @_;
     my $class = ref($proto) || $proto;
 
-    my $self = $class->SUPER::new();
+    my $self = $class->SUPER::new;
 
     $self->{__content} = $content || "";
     $self->{__expr}    = '';
@@ -101,14 +103,15 @@ Parameters: B<EXPR> - the conditional expression, without the [if ] (ex: lt IE 7
 sub setConditional {
     my ($self, $expr, $content) = @_;
 
-    return $self->setContent("[if $expr]>$content<![endif]");
+    $self->{__expr} = $expr;
+    return $self->setContent($content);
 }
 
 =item B<setConditionalData> (B<EXPR>, B<OBJECT>)
   
 Sets a conditional comment with IWL objects
 
-Parameters: B<EXPR> - the conditional expression, without the [if ] (ex: lt IE 7 expands to [if lt IE 7]). The [endif] part will be placed automatically, B<OBJECT> - IWL::Objects(3pm)
+Parameters: B<EXPR> - the conditional expression, without the [if ] (ex: lt IE 7 expands to [if lt IE 7]). The [endif] part will be placed automatically, B<OBJECT> - L<IWL::Objects>
 
 =cut
 
@@ -124,19 +127,47 @@ sub setConditionalData {
 #
 sub getContent {
     my $self = shift;
+    return '<!-- ' . $self->{__content} . ' -->' unless $self->{__expr};
 
-    if (scalar @{$self->{__data}}) {
-	my $content = '<!--[if ' . $self->{__expr} . ']>';
-	foreach my $data (@{$self->{__data}}) {
-	    $content .= $data->getContent;
-	}
-	return $content .= "<![endif]-->\n";
+    my $content = '<!--[if ' . $self->{__expr} . ']>';
+    if (@{$self->{__data}}) {
+        foreach my $data (@{$self->{__data}}) {
+            $content .= $data->getContent;
+        }
+    } else {
+        $content .= $self->{__content};
     }
-    return '<!-- ' . $self->{__content} . ' -->';
+    return $content .= "<![endif]-->\n";
 }
 
 sub getObject {
-    return {};
+    my $self = shift;
+    return {} unless $self->{__expr};
+
+    require IWL::Script;
+    my $script = IWL::Script->new;
+    my $expr = $self->{__expr};
+    $expr = $expr eq 'IE 7' ? 'Prototype.Browser.IE7'
+      : $expr =~ /^IE( [\d\.]+)?$/ ? 'Prototype.Browser.IE'
+      : $expr eq '!IE 7' ? '!Prototype.Browser.IE7'
+      : index($expr, '!') == 0 ? '!Prototype.Browser.IE'
+      : $expr eq 'lt IE 7' ? 'Prototype.Browser.IE && !Prototype.Browser.IE7'
+      : $expr eq 'lte IE 7' ? 'Prototype.Browser.IE'
+      : $expr eq /^lte IE [5-6]/ ? 'Prototype.Browser.IE && !Prototype.Browser.IE7'
+      : $expr eq /gt IE [5-6]/ ? 'Prototype.Browser.IE7'
+      : $expr eq 'gte IE 7' ? 'Prototype.Browser.IE7'
+      : $expr eq /^gte IE [5-6]/ ? 'Prototype.Browser.IE'
+      : 'Prototype.Browser.IE';
+
+    my $content = escape($self->{__content});
+    my $id = randomize('comment_script');
+    $script->setAttribute(id => $id)->setScript(<<EOF);
+if ($expr) {
+    var script = \$('$id');
+    script.parentNode.replaceChild(new Element('div').update(unescape('$content')), script);
+}
+EOF
+    return $script->getObject;
 }
 
 1;

@@ -58,6 +58,26 @@ The level of strictness. If greater than 1, attribute names will be checked, and
 
 If true, more debug information will be produced. Default value: I<''>
 
+=item B<JS_WHITELIST>
+
+A comma separated list of config elements, which are allowed to make it into the JavaScript IWL.Config object. The default value includes the previously mentioned config elements.
+
+=item B<RESPONSE_CLASS>
+
+If defined, this class will be used for sending data to the server. See L<IWL::Response> for more details.
+
+=item B<STATIC_URIS>
+
+A colon-separated list of URIs, containing static files. See L<IWL::Static> for more details.
+
+=item B<STATIC_URI_SCRIPT>
+
+A path, relative to the server document root, which points to a script to handle static content via L<IWL::Static>.
+
+=item B<DOCUMENT_ROOT>
+
+The absolute path to the document root. It is used by L<IWL::Static> to locate the static content.
+
 =item I<EXAMPLE CONFIG FILE>
 
     SKIN = "myskin"
@@ -85,6 +105,10 @@ It is mutated to I<SKIN_DIR> + '/' + I<SKIN> + I<IMAGE_DIR>
 
 It is mutated to I<SKIN_DIR> + '/' + I<SKIN> + I<ICON_DIR>
 
+=item B<JS_WHITELIST>
+
+It is mutated to an array reference, by splitting the value by a I<','>
+
 =back
 
 =cut
@@ -106,37 +130,62 @@ sub parse_conf {
 if (!exists $IWLConfig{JS_DIR}) {
     # Default values
     %IWLConfig = (
-	SKIN         => 'default',
-	SKIN_DIR     => '/iwl/skin',
-	IMAGE_DIR    => '/images',
-	ICON_DIR     => '/images/icons',
-	ICON_EXT     => 'gif',
-	JS_DIR       => '/iwl/jscript',
-	STRICT_LEVEL => 1,
+        SKIN         => 'default',
+        SKIN_DIR     => '/iwl/skin',
+        IMAGE_DIR    => '/images',
+        ICON_DIR     => '/images/icons',
+        ICON_EXT     => 'gif',
+        JS_DIR       => '/iwl/jscript',
+        STRICT_LEVEL => 1,
         DEBUG        => '',
+        JS_WHITELIST => 'SKIN,SKIN_DIR,IMAGE_DIR,ICON_DIR,ICON_EXT,JS_DIR,STRICT_LEVEL,DEBUG',
     );
 
     if ($ENV{IWL_CONFIG_FILE} && -s $ENV{IWL_CONFIG_FILE}) {
-	parse_conf($ENV{IWL_CONFIG_FILE});
+        parse_conf($ENV{IWL_CONFIG_FILE});
+    } elsif (-s 'iwl.conf') {
+        parse_conf('iwl.conf');
     } else {
-	require Cwd;
-	import Cwd qw(abs_path);
+        require Cwd;
+        import Cwd qw(abs_path);
 
-	my $script_path = abs_path($0);
-	my $conf;
+        my $script_path = abs_path($0);
+        my $conf;
 
-	$script_path =~ s/[^\/]+$//;
-	$conf = $script_path . 'iwl.conf';
+        $script_path =~ s/[^\/]+$//;
+        $conf = $script_path . 'iwl.conf';
 
-	parse_conf($conf) if (-s $conf);
+        parse_conf($conf) if (-s $conf);
     }
-    $IWLConfig{SKIN_DIR} .= '/' . $IWLConfig{SKIN};
-    $IWLConfig{IMAGE_DIR} = $IWLConfig{SKIN_DIR} . $IWLConfig{IMAGE_DIR};
-    $IWLConfig{ICON_DIR}  = $IWLConfig{SKIN_DIR} . $IWLConfig{ICON_DIR};
+    $IWLConfig{SKIN_DIR}    .= '/' . $IWLConfig{SKIN};
+    $IWLConfig{IMAGE_DIR}    = $IWLConfig{SKIN_DIR} . $IWLConfig{IMAGE_DIR};
+    $IWLConfig{ICON_DIR}     = $IWLConfig{SKIN_DIR} . $IWLConfig{ICON_DIR};
+    $IWLConfig{JS_WHITELIST} = [split ',', $IWLConfig{JS_WHITELIST}];
 }
 
 @EXPORT_OK = qw(%IWLConfig);
 @EXPORT    = qw(%IWLConfig);
+
+=head1 METHODS
+
+=over 4
+
+=item B<getJSConfig>
+
+Returns a javascript expression, which creates the global IWL object, if such does not exist, and adds the Config attribute to it.
+
+This is a class method.
+
+=cut
+
+sub getJSConfig {
+    require IWL::JSON;
+
+    return "if (!window.IWL) var IWL = {};" .
+           "IWL.Config = " . IWL::JSON::toJSON(
+               {map {$_ => $IWLConfig{$_}} @{$IWLConfig{JS_WHITELIST}}}
+           ) . ";";
+}
 
 1;
 

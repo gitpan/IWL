@@ -182,7 +182,7 @@ sub randomize {
     my $string = shift;
 
     return '' unless defined $string;
-    $string .= '_' . rand(65536);
+    $string .= '_' . int(rand(1e10));
     $string =~ s/\.//g;
 
     return $string;

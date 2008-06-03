@@ -12,10 +12,12 @@ use IWL::Page::Head;
 use IWL::Page::Link;
 use IWL::Page::Meta;
 use IWL::Page::Title;
+use IWL::Environment;
 use IWL::Script;
 use IWL::Comment;
 use IWL::Config qw(%IWLConfig);
 use IWL::JSON qw(toJSON);
+use IWL::String qw(randomize);
 
 use constant DOCTYPES => {
     html401 => <<DECL,
@@ -46,7 +48,7 @@ IWL::Page - The root widget, containing the body and header markup.
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Page>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Page>
 
 =head1 DESCRIPTION
 
@@ -72,15 +74,14 @@ sub new {
     my ($proto, %args) = @_;
     my $class = ref($proto) || $proto;
 
-    my $self = $class->SUPER::new();
+    my $self = $class->SUPER::new(%args);
 
-    $self->{_tag}         = "html";
-    $self->{_HTTPHeader} = "Content-type: text/html; charset=utf-8";
+    $self->{_tag} = "html";
     $self->setDeclaration('xhtml1');
-    $self->setAttribute(xmlns => "http://www.w3c.org/1999/xhtml");
+    $self->setAttribute(xmlns => "http://www.w3.org/1999/xhtml");
     $self->setAttribute('xmlns:iwl' => "http://namespace.bloka.org/iwl");
 
-    $self->__init(%args);
+    $self->_init(%args);
 
     return $self;
 }
@@ -110,7 +111,7 @@ sub appendMetaEquiv {
 
 Appends the object to the head of the page
 
-Parameters: B<OBJECT> - IWL::Object(3pm)
+Parameters: B<OBJECT> - L<IWL::Object>
 
 =cut
 
@@ -125,7 +126,7 @@ sub appendHeader {
 
 Prepends the object to the head of the page
 
-Parameters: B<OBJECT> - IWL::Object(3pm)
+Parameters: B<OBJECT> - L<IWL::Object>
 
 =cut
 
@@ -162,35 +163,6 @@ Returns the title text of the page
 sub getTitle {
     my $self = shift;
     return $self->{_head}{_title} ? $self->{_head}{_title}->getText : '';
-}
-
-=item B<setHTTPHeader> (B<HEADER>)
-
-Sets the header of the page. The default one is:
-  Content-type: text/html; charset=utf-8
-
-The two final new lines are not required
-
-Parameters: B<HEADER> - the header string
-
-=cut
-
-sub setHTTPHeader {
-    my ($self, $header) = @_;
-    return unless $header;
-
-    $self->{_HTTPHeader} = $header;
-    return $self;
-}
-
-=item B<getHTTPHeader>
-
-Returns the HTTP header
-
-=cut
-
-sub getHTTPHeader {
-    return shift->{_HTTPHeader};
 }
 
 =item B<setDeclaration> (B<DECLARATION>)
@@ -230,33 +202,49 @@ sub getDeclaration {
     return shift->{_declaration};
 }
 
+=item B<getEnvironment>
+
+Returns the L<IWL::Environment> object for the page
+
+=cut
+
+sub getEnvironment {
+    return shift->{environment};
+}
+
 # Overrides
 #
 sub signalConnect {
-    my ($self, $signal, $callback) = @_;
+    return shift->{_body}->signalConnect(@_);
+}
 
-    $self->{_body}->signalConnect($signal, $callback);
+sub signalDisconnect {
+    return shift->{_body}->signalDisconnect(@_);
 }
 
 sub appendChild {
-    my ($self, @objects) = @_;
-    $self->{_body}->appendChild(@objects);
+    return shift->{_body}->appendChild(@_);
 }
 
 sub prependChild {
-    my ($self, @objects) = @_;
-    $self->{_body}->prependChild(@objects);
+    return shift->{_body}->prependChild(@_);
+}
+
+sub registerEvent {
+    return shift->{_body}->registerEvent(@_);
 }
 
 sub requiredJs {
-    my ($self, @urls) = @_;
-    
-    return $self->{_head}->requiredJs(@urls);
+    return shift->{environment}->requiredJs(@_);
 }
 
-# Internal
+sub requiredCSS {
+    return shift->{environment}->requiredCSS(@_);
+}
+
+# Protected
 #
-sub __init {
+sub _init {
     my ($self, %args) = @_;
     my $head = IWL::Page::Head->new;
     my $body = IWL::Page::Body->new;
@@ -266,32 +254,25 @@ sub __init {
     $self->SUPER::appendChild($head);
     $self->SUPER::appendChild($body);
 
-    return 1 if $args{simple};
-    delete $args{simple};
+    do { $self->{__simple} = delete $args{simple}; return 1 } if $args{simple};
 
     $self->_constructorArguments(%args);
-    my $skin = IWL::Page::Link->new(
-        rel   => 'stylesheet',
-        type  => 'text/css',
-	href  => $IWLConfig{SKIN_DIR} . '/main.css',
-        media => 'screen',
-	title => 'Main',
-    );
-    my $ie          = IWL::Page::Link->newLinkToCSS($IWLConfig{SKIN_DIR} . '/ie.css');
-    my $ie6         = IWL::Page::Link->newLinkToCSS($IWLConfig{SKIN_DIR} . '/ie6.css');
-    my $conditional = IWL::Comment->new;
-    $self->requiredJs('base.js');
+    my $ie   = IWL::Page::Link->newLinkToCSS($IWLConfig{SKIN_DIR} . '/ie.css');
+    my $ie6  = IWL::Page::Link->newLinkToCSS($IWLConfig{SKIN_DIR} . '/ie6.css');
 
-    my $script = IWL::Script->new;
-    $script->appendScript("if (!window.IWL) var IWL = {};" .
-                          "IWL.Config = " . toJSON(\%IWLConfig) . ";");
+    my $conditional = IWL::Comment->new;
+
+    my $script = IWL::Script->new->setAttribute('iwl:independant');
+    $script->appendScript(IWL::Config::getJSConfig);
     $head->appendChild($script);
 
-    $head->appendChild($skin);
     $head->appendChild($conditional);
+    $body->setId(randomize('body'));
     $conditional->setConditionalData('IE', $ie);
     $conditional = IWL::Comment->new;
     $head->appendChild($conditional);
+    $self->{environment} = IWL::Environment->new unless $self->{environment};
+    $self->requiredJs('base.js')->requiredCSS('main.css');
     return $conditional->setConditionalData('lt IE 7', $ie6);
 }
 

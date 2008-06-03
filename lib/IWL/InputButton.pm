@@ -15,7 +15,7 @@ IWL::InputButton - a input button
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Input> -> L<IWL::InputButton>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Input> -> L<IWL::InputButton>
 
 =head1 DESCRIPTION
 
@@ -43,7 +43,7 @@ sub new {
 
     my $self = $class->SUPER::new;
 
-    $self->__init(%args);
+    $self->_init(%args);
     return $self;
 }
 
@@ -75,9 +75,9 @@ sub getLabel {
     return shift->getValue;
 }
 
-# Internal
+# Protected
 #
-sub __init {
+sub _init {
     my ($self, %args) = @_;
 
     $self->{_defaultClass} = 'inputbutton';

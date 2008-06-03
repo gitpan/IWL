@@ -13,7 +13,7 @@ IWL::Input - input widget
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Input>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Input>
 
 =head1 DESCRIPTION
 
@@ -164,7 +164,7 @@ sub isDisabled {
 
 =item B<extractState> (B<STATE>)
 
-Update the IWL::Stash(3pm) B<STATE> according to the input state.
+Update the L<IWL::Stash> B<STATE> according to the input state.
 
 =cut
 
@@ -187,7 +187,7 @@ sub extractState {
 
 =item B<applyState> (B<STATE>)
 
-Update the input element according to the IWL::Stash(3pm) B<STATE>
+Update the input element according to the L<IWL::Stash> B<STATE>
 object.  The B<STATE> will get modified, i.e. the "used" element
 will be shifted from the according slot (name attribute) of the
 state.

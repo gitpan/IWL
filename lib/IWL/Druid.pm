@@ -20,7 +20,7 @@ IWL::Druid - a sequential content widget.
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::Druid>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::Druid>
 
 =head1 DESCRIPTION
 
@@ -53,7 +53,7 @@ sub new {
     # The list of pages
     $self->{__pages} = [];
 
-    $self->__init(%args);
+    $self->_init(%args);
 
     return $self;
 }
@@ -66,7 +66,7 @@ sub new {
 
 Appends the data to the druid as a new page
 
-Parameter: B<OBJECT> - the IWL::Object(3pm) to be appended, B<CALLBACK> - the function to be called when pressing the C<NEXT> button (if it returns true, the druid will proceed to the next page), B<PARAM> the parameter of the callback, B<CURRENT> - a boolean value which lets the appended page be the current one
+Parameter: B<OBJECT> - the L<IWL::Object> to be appended, B<CALLBACK> - the function to be called when pressing the C<NEXT> button (if it returns true, the druid will proceed to the next page), B<PARAM> the parameter of the callback, B<CURRENT> - a boolean value which lets the appended page be the current one
 
 Returns: the page
 
@@ -74,14 +74,14 @@ Returns: the page
 
 sub appendPage {
     my ($self, $object, $callback, $param, $current) = @_;
-    return $self->__setup_page($object, $callback, $param, $current);
+    return $self->__setupPage($object, $callback, $param, $current);
 }
 
 =item B<prependPage> (B<OBJECT>, [B<CALLBACK>, B<PARAM>, B<CURRENT>])
 
 Prepends the data to the druid as a new page
 
-Parameter: B<OBJECT> - the IWL::Object(3pm) to be prepended, B<CALLBACK> - the function to be called when pressing the C<NEXT> button (if it returns true, the druid will proceed to the next page), B<PARAM> the parameter of the callback, B<CURRENT> - a boolean value which lets the appended page be the current one
+Parameter: B<OBJECT> - the L<IWL::Object> to be prepended, B<CALLBACK> - the function to be called when pressing the C<NEXT> button (if it returns true, the druid will proceed to the next page), B<PARAM> the parameter of the callback, B<CURRENT> - a boolean value which lets the appended page be the current one
 
 Returns: the page
 
@@ -89,7 +89,7 @@ Returns: the page
 
 sub prependPage {
     my ($self, $object, $callback, $param, $current) = @_;
-    return $self->__setup_page($object, $callback, $param, $current, 1);
+    return $self->__setupPage($object, $callback, $param, $current, 1);
 }
 
 =item B<showFinish> (B<PAGE>)
@@ -148,9 +148,7 @@ sub _setupDefaultClass {
     return $self;
 }
 
-# Internal
-#
-sub __init {
+sub _init {
     my ($self, %args) = @_;
     my $content     = IWL::Container->new;
     my $back_button =
@@ -187,7 +185,9 @@ sub __init {
     return $self;
 }
 
-sub __setup_page {
+# Internal
+#
+sub __setupPage {
     my ($self, $data, $callback, $param, $selected, $reverse) = @_;
     my $page = IWL::Druid::Page->new;
     my $index;

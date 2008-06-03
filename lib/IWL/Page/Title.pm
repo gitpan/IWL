@@ -15,7 +15,7 @@ IWL::Page::Title - the <title> markup
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Page::Title>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Page::Title>
 
 =head1 DESCRIPTION
 
@@ -27,7 +27,7 @@ sub new {
     my $proto = shift;
     my $class = ref($proto) || $proto;
 
-    my $self = $class->SUPER::new();
+    my $self = $class->SUPER::new(@_);
 
     $self->{_tag} = "title";
 

@@ -5,6 +5,8 @@ package IWL::RPC;
 
 use strict;
 
+use base 'IWL::Error';
+
 use IWL::Object;
 use IWL::JSON qw(toJSON evalJSON);
 
@@ -32,6 +34,10 @@ Where B<%ARGS> is an optional hash parameter with with key-values.
 
 A hashref of CGI parameters to use, instead of reading for GET/POST parameters.
 
+=item B<deferExit>
+
+If true, the IWL::RPC will return, instead of calling the exit(3pm) function.
+
 =back
 
 =cut
@@ -41,8 +47,9 @@ sub new {
     my $class = ref($proto) || $proto;
     my $self  = bless {}, $class;
 
-    $self->{__isRead} = undef;
-    $self->{__params} = $args{parameters} if ref $args{parameters} eq 'HASH';
+    $self->{__isRead}    = undef;
+    $self->{__params}    = $args{parameters} if ref $args{parameters} eq 'HASH';
+    $self->{__deferExit} = $args{deferExit} if defined $args{deferExit};
 
     return $self;
 }
@@ -143,6 +150,35 @@ sub getParams {
     return %FORM;
 }
 
+=item B<setParams> (B<PARAMETERS>)
+
+Adds the given parameters to the parameter list of the RPC
+
+Parameters: B<PARAMETERS> - a hash of parameters to add
+
+=cut
+
+sub setParams {
+    my ($self, %parameters) = @_;
+
+    $self->{__params}{$_} = $parameters{$_} foreach keys %parameters;
+
+    return $self;
+}
+
+=item B<clearParams>
+
+Clears the internal parameter list of the RPC
+
+=cut
+
+sub clearParams {
+    my $self = shift;
+
+    $self->{__params} = undef;
+    return $self;
+}
+
 =item B<queryStringToCGIForm> (B<QUERY>, B<FORM>)
 
 The function splits a query string and fills out the given hash reference
@@ -179,9 +215,11 @@ sub queryStringToCGIForm {
 
 =item B<handleEvent> (B<EVENT>, B<CALLBACK>)
 
-Handles IWL::RPC(3pm) widget specific events. Non-library specific handling code comes is passed via the user specified callback.
+Handles L<IWL::RPC> widget specific events. Non-library specific handling code comes is passed via the user specified callback.
 
-Parameters: B<EVENT> - The event name to be handled. B<CALLBACK> - a perl callback to handle the event.
+Parameters: B<EVENT> - The event name to be handled. B<CALLBACK> (I<parameters>, [I<id>, I<elementData>]) - a perl callback, called by the event handler.
+
+Unless provided by the class, to which the event belongs, all events are processed by the default event handler. The handler calls the perl B<CALLBACK>, passing the I<parameters> hashref as a first argument, as well as the I<id> of the emitting element (if it has an ID), and the collected I<elementData> (if the I<collectData> option was passed when registering the event. See L<IWL::RPC::Request::registerEvent> for more information). The B<CALLBACK> has to return I<DATA>, and I<EXTRAS>. The I<DATA> can be an L<IWL::Object>, an arrayref or hashref, which will be serialized into JSON, or string data. The I<EXTRAS> is in the form of a hashref, with keys and values that might be needed by processing client-side code.
 
 =cut
 
@@ -196,7 +234,9 @@ sub handleEvent {
 	    $name =~ s/-/::/g;
 	    my ($package, $func) = $name =~ /(.*)::([^:]*)$/;
 	    eval "require $package";
-	    exit 255 if $@;
+            ($self->{__deferExit}
+                ? return $self->_pushFatalError($@)
+                : exit 255) if $@;
 	    my $method;
 	    {
 		no strict 'refs';
@@ -207,15 +247,17 @@ sub handleEvent {
 	    } else {
 		$self->__defaultEvent($form{IWLEvent}, $handler);
 	    }
-	    exit 0;
+            $self->{__deferExit} ? return $self : exit 0;
 	}
     }
+    return;
 }
 
 # Internal
 #
 sub __defaultEvent {
     my ($self, $event, $handler) = @_;
+    my $response = IWL::Response->new;
 
     my ($data, $extras) = ('CODE' eq ref $handler)
       ? $handler->($event->{params}, $event->{options}{id},
@@ -230,15 +272,16 @@ sub __defaultEvent {
     }
 
     if ($event->{options}{update}) {
-        IWL::Object::printHTMLHeader;
         if (UNIVERSAL::isa($data, 'IWL::Object')) {
-            $data->print;
+            $data->send(type => 'html');
         } else {
-            print $data;
+            $response->send(content => $data, header => IWL::Object::getHTMLHeader);
         }
     } else {
-        IWL::Object::printJSONHeader;
-        print '{data: ' . $data . ', extras: ' . (toJSON($extras) || 'null') . '}';
+        $response->send(
+            content => '{data: ' . $data . ', extras: ' . (toJSON($extras) || 'null') . '}',
+            header => IWL::Object::getJSONHeader
+        );
     }
 }
 

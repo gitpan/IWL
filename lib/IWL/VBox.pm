@@ -9,11 +9,11 @@ use base 'IWL::Container';
 
 =head1 NAME
 
-IWL::VBox - A horizontal box container
+IWL::VBox - A vertical box container
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::VBox>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::VBox>
 
 =head1 DESCRIPTION
 

@@ -18,7 +18,7 @@ IWL::Tooltip - a tooltip widget
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Tooltip>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Tooltip>
 
 =head1 DESCRIPTION
 
@@ -54,7 +54,7 @@ sub new {
 
     my $self = $class->SUPER::new();
 
-    $self->__init(%args);
+    $self->_init(%args);
 
     return $self;
 }
@@ -97,7 +97,7 @@ Note: The tooltip and widget ids must not be changed after this method is called
 sub bindHideToWidget {
     my ($self, $widget, $signal) = @_;
     my $to = $widget->getId;
-    return $self->_pushError(__x("Invalid id: '{ID}'", ID => $to)) unless $to;
+    return $self->_pushError(__("Invalid id")) unless $to;
 
     $self->{__boundHide} = $to;
     $self->{__bindHideSignal} = $widget->_namespacedSignalName($signal);
@@ -179,9 +179,7 @@ sub _realize {
     $self->_appendInitScript("IWL.Tooltip.create('$id', $options);");
 }
 
-# Internal
-#
-sub __init {
+sub _init {
     my ($self, %args) = @_;
 
     $self->{_options} = {style => {}};

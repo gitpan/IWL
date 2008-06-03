@@ -19,7 +19,7 @@ IWL::Menu - a menu widget
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::List> -> L<IWL::Menu>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::List> -> L<IWL::Menu>
 
 =head1 DESCRIPTION
 
@@ -47,9 +47,7 @@ sub new {
     my ($proto, %args) = @_;
     my $class = ref($proto) || $proto;
 
-    my $self = $class->SUPER::new;
-
-    $self->IWL::Menu::__init(%args);
+    my $self = $class->SUPER::new(%args);
 
     return $self;
 }
@@ -137,7 +135,7 @@ Note: The widget ID must not be changed after this method is called.
 sub bindToWidget {
     my ($self, $widget, $signal) = @_;
     my $id = $widget->getId;
-    return $self->_pushError(__x("Invalid id: '{ID}'", ID => $id)) unless $id;
+    return $self->_pushError(__("Invalid id")) unless $id;
     push @{$self->{__bindWidgets}}, [$id => $widget->_namespacedSignalName($signal)];
 
     return $self;
@@ -188,11 +186,10 @@ sub _realize {
     return $self->_appendInitScript($script);
 }
 
-# Internal
-#
-sub __init {
+sub _init {
     my ($self, %args) = @_;
 
+    $self->SUPER::_init(%args);
     $self->{_defaultClass} = 'menu';
     $args{id} = randomize($self->{_defaultClass}) if !$args{id};
     $self->_constructorArguments(%args);
@@ -202,6 +199,8 @@ sub __init {
     $self->{__bindWidgets} = [];
 }
 
+# Internal
+#
 sub __setup_menu_separator {
     my $self = shift;
     my $mi = IWL::Widget->new;

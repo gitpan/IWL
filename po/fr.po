@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: IWL 0.45\n"
 "Report-Msgid-Bugs-To: Viktor Kojouharov <viktork@cpan.org>\n"
-"POT-Creation-Date: 2007-11-14 11:45+0200\n"
+"POT-Creation-Date: 2008-06-02 18:06+0300\n"
 "PO-Revision-Date: 2007-10-10 22:11+0300\n"
 "Last-Translator: Guido Flohr <viktor@imperia.net>\n"
 "Language-Team: French <guido@imperia.net>\n"
@@ -14,33 +14,33 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
-#: ../lib/IWL/GoogleMap.pm:158
-msgid "Container has no id"
-msgstr "Le conteneur n'a aucune ID"
-
-#: ../lib/IWL/GoogleMap.pm:270
-msgid ""
-"No key provided.  Please follow this link in order to obtain a key from "
-"Google."
+#: ../lib/IWL/Google/Map.pm:398
+#, perl-brace-format
+msgid "No API key provided. One can be obtained from {URL}"
 msgstr ""
 
-#: ../lib/IWL/Tooltip.pm:79
+#: ../lib/IWL/Tooltip.pm:79 ../lib/IWL/Tooltip.pm:100 ../lib/IWL/Menu.pm:138
 msgid "Invalid id"
 msgstr ""
 
-#: ../lib/IWL/Tooltip.pm:100 ../lib/IWL/Menu.pm:140
-#, perl-brace-format
-msgid "Invalid id: '{ID}'"
-msgstr ""
-
-#: ../lib/IWL/Druid.pm:171
+#: ../lib/IWL/Druid.pm:169
 msgid "Finish"
 msgstr "Terminer"
 
 #. TRANSLATORS: {PAGEENTRY} and {PAGECOUNT} are placeholders
-#: ../lib/IWL/PageControl.pm:166
+#: ../lib/IWL/PageControl.pm:164
 #, perl-brace-format
 msgid "{PAGEENTRY} of {PAGECOUNT}"
+msgstr ""
+
+#: ../lib/IWL/Static.pm:294
+#, perl-brace-format
+msgid "Cannot open directory {URI}: {ERR}"
+msgstr ""
+
+#: ../lib/IWL/Static.pm:330
+#, perl-brace-format
+msgid "The URI '{URI}' does not belong in the predefined list of static URIs."
 msgstr ""
 
 #: ../lib/IWL/Stock.pm:28
@@ -52,8 +52,8 @@ msgid "Apply"
 msgstr "Appliquer"
 
 #: ../lib/IWL/Stock.pm:36
-msgid "Back"
-msgstr "Retour"
+msgid "Calendar"
+msgstr "Calendrier"
 
 #: ../lib/IWL/Stock.pm:40
 msgid "Cancel"
@@ -72,155 +72,108 @@ msgid "Delete"
 msgstr "Effacer"
 
 #: ../lib/IWL/Stock.pm:56
+msgid "Directory"
+msgstr "Répertoire"
+
+#: ../lib/IWL/Stock.pm:60
+msgid "Create directory"
+msgstr "Créer un répertoire"
+
+#: ../lib/IWL/Stock.pm:64
 msgid "Download"
 msgstr "Télécharger"
 
-#: ../lib/IWL/Stock.pm:60
+#: ../lib/IWL/Stock.pm:68
 msgid "Edit"
 msgstr "Éditer"
 
-#: ../lib/IWL/Stock.pm:64
-msgid "Export"
-msgstr "Exporter"
-
-#: ../lib/IWL/Stock.pm:68
+#: ../lib/IWL/Stock.pm:72
 msgid "Fullscreen"
 msgstr "Plein écran"
-
-#: ../lib/IWL/Stock.pm:72
-msgid "Go"
-msgstr "Aller"
 
 #: ../lib/IWL/Stock.pm:76
 msgid "Go back"
 msgstr "Précédent"
 
 #: ../lib/IWL/Stock.pm:80
+msgid "Go down"
+msgstr ""
+
+#: ../lib/IWL/Stock.pm:84
 msgid "Go forward"
 msgstr "Suivant"
 
-#: ../lib/IWL/Stock.pm:84
+#: ../lib/IWL/Stock.pm:88
+msgid "Go up"
+msgstr ""
+
+#: ../lib/IWL/Stock.pm:92
 msgid "Go to first"
 msgstr "Premier"
 
-#: ../lib/IWL/Stock.pm:88
+#: ../lib/IWL/Stock.pm:96
 msgid "Go to last"
 msgstr "Dernier"
 
-#: ../lib/IWL/Stock.pm:92
+#: ../lib/IWL/Stock.pm:100
 msgid "Help"
 msgstr "Aide"
 
-#: ../lib/IWL/Stock.pm:96
+#: ../lib/IWL/Stock.pm:104
 msgid "Information"
 msgstr "Information"
 
-#: ../lib/IWL/Stock.pm:100
+#: ../lib/IWL/Stock.pm:108
 msgid "Lock"
 msgstr "Cadenas"
 
-#: ../lib/IWL/Stock.pm:104
-msgid "Minimize"
-msgstr "Réduire"
-
-#: ../lib/IWL/Stock.pm:108
+#: ../lib/IWL/Stock.pm:112
 msgid "New"
 msgstr "Nouveau"
 
-#: ../lib/IWL/Stock.pm:112
+#: ../lib/IWL/Stock.pm:116
 msgid "Next"
 msgstr "Prochain"
 
-#: ../lib/IWL/Stock.pm:116
+#: ../lib/IWL/Stock.pm:120
 msgid "OK"
 msgstr "OK"
 
-#: ../lib/IWL/Stock.pm:120
+#: ../lib/IWL/Stock.pm:124
 msgid "Preferences"
 msgstr "Préférences"
 
-#: ../lib/IWL/Stock.pm:124
+#: ../lib/IWL/Stock.pm:128
 msgid "Preview"
 msgstr "Aperçu avant impression"
 
-#: ../lib/IWL/Stock.pm:128
+#: ../lib/IWL/Stock.pm:132
+#, fuzzy
+msgid "Previous"
+msgstr "Aperçu avant impression"
+
+#: ../lib/IWL/Stock.pm:136
 msgid "Refresh"
 msgstr "Actualiser"
 
-#: ../lib/IWL/Stock.pm:132
+#: ../lib/IWL/Stock.pm:140
 msgid "Remove"
 msgstr "Supprimer"
 
-#: ../lib/IWL/Stock.pm:136
+#: ../lib/IWL/Stock.pm:144
 msgid "Save"
 msgstr "Enregistrer"
 
-#: ../lib/IWL/Stock.pm:140
-msgid "Save and close"
-msgstr "Enregistrer et fermer"
-
-#: ../lib/IWL/Stock.pm:144
+#: ../lib/IWL/Stock.pm:148
 msgid "Upload"
 msgstr "Charger"
 
-#: ../lib/IWL/Stock.pm:149
-msgid "Add Filter"
-msgstr "Ajouter un filtre"
-
 #: ../lib/IWL/Stock.pm:153
-msgid "Directory"
-msgstr "Répertoire"
-
-#: ../lib/IWL/Stock.pm:157
-msgid "Delete directory"
-msgstr "Supprimer un répertoire"
-
-#: ../lib/IWL/Stock.pm:161
-msgid "Edit directory"
-msgstr "Éditer dossier"
-
-#: ../lib/IWL/Stock.pm:165
-msgid "Create directory"
-msgstr "Créer un répertoire"
-
-#: ../lib/IWL/Stock.pm:170
-msgid "Bottom"
-msgstr "Bas"
-
-#: ../lib/IWL/Stock.pm:174 ../lib/IWL/Stock.pm:186
-msgid "Main menu"
-msgstr "Menu principal"
-
-#: ../lib/IWL/Stock.pm:178
-msgid "Info"
-msgstr "Info"
-
-#: ../lib/IWL/Stock.pm:182
-msgid "Mail"
-msgstr "Courrier"
-
-#: ../lib/IWL/Stock.pm:190
-msgid "Quit"
-msgstr "Quitter"
-
-#: ../lib/IWL/Stock.pm:194
-msgid "Available roles"
-msgstr "Rôles disponibles"
-
-#: ../lib/IWL/Stock.pm:198
-msgid "Top"
-msgstr "Haut"
-
-#: ../lib/IWL/Stock.pm:203
-msgid "Calendar"
-msgstr "Calendrier"
-
-#: ../lib/IWL/Stock.pm:208 ../lib/IWL/Stock.pm:212
 msgid "Generic Text"
 msgstr "Text générique"
 
 #. TRANSLATORS: {TITLE} is a placeholder
-#: ../lib/IWL/Iconbox.pm:140
+#: ../lib/IWL/Iconbox.pm:200
 #, perl-brace-format
 msgid "The icon '{TITLE}' was removed."
 msgstr ""
@@ -230,8 +183,27 @@ msgstr ""
 msgid "Uploading ..."
 msgstr "Charger"
 
-#: ../lib/IWL/Upload.pm:223
+#: ../lib/IWL/Upload.pm:221
 msgid "Browse ..."
+msgstr ""
+
+#: ../lib/IWL/Canvas.pm:34
+msgid "No context has been given."
+msgstr ""
+
+#: ../lib/IWL/Canvas.pm:155 ../lib/IWL/Canvas.pm:395 ../lib/IWL/Canvas.pm:471
+#: ../lib/IWL/Canvas.pm:830
+#, perl-brace-format
+msgid "Invalid color: '{COLOR}'"
+msgstr ""
+
+#: ../lib/IWL/Canvas.pm:832
+msgid "No gradient name has been given."
+msgstr ""
+
+#: ../lib/IWL/Canvas.pm:833
+#, perl-brace-format
+msgid "The gradient object '{GRADIENT}' does not exist."
 msgstr ""
 
 #. TRANSLATORS: week day abbreviations, {ABBR} is a placeholder
@@ -406,3 +378,51 @@ msgstr "Novembre"
 #: ../lib/IWL/Calendar.pm:30
 msgid "December"
 msgstr "Décembre"
+
+#~ msgid "Container has no id"
+#~ msgstr "Le conteneur n'a aucune ID"
+
+#~ msgid "Back"
+#~ msgstr "Retour"
+
+#~ msgid "Export"
+#~ msgstr "Exporter"
+
+#~ msgid "Go"
+#~ msgstr "Aller"
+
+#~ msgid "Minimize"
+#~ msgstr "Réduire"
+
+#~ msgid "Save and close"
+#~ msgstr "Enregistrer et fermer"
+
+#~ msgid "Add Filter"
+#~ msgstr "Ajouter un filtre"
+
+#~ msgid "Delete directory"
+#~ msgstr "Supprimer un répertoire"
+
+#~ msgid "Edit directory"
+#~ msgstr "Éditer dossier"
+
+#~ msgid "Bottom"
+#~ msgstr "Bas"
+
+#~ msgid "Main menu"
+#~ msgstr "Menu principal"
+
+#~ msgid "Info"
+#~ msgstr "Info"
+
+#~ msgid "Mail"
+#~ msgstr "Courrier"
+
+#~ msgid "Quit"
+#~ msgstr "Quitter"
+
+#~ msgid "Available roles"
+#~ msgstr "Rôles disponibles"
+
+#~ msgid "Top"
+#~ msgstr "Haut"

@@ -15,7 +15,7 @@ IWL::Style - a stylesheet object
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Style>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Style>
 
 =head1 DESCRIPTION
 
@@ -33,7 +33,7 @@ sub new {
     my ($proto, %args) = @_;
     my $class = ref($proto) || $proto;
 
-    my $self = $class->SUPER::new();
+    my $self = $class->SUPER::new(%args);
 
     $self->{_tag} = "style";
     $self->setAttribute(type => 'text/css');
@@ -74,14 +74,19 @@ sub getMedia {
 
 Imports stylesheets from a file.
 
-Parameter: B<FILE> - the css file
+Parameter: B<FILE> - the css file, or an array reference of files, if both I<STATIC_URI_SCRIPT> and I<STATIC_UNION> options are set.
 
 =cut
 
 sub appendStyleImport {
     my ($self, $style) = @_;
+    require IWL::Static;
 
-    my $import = IWL::Text->new('@import "' . $style . '";' . "\n");
+    my $import = IWL::Text->new('@import "'
+        . (ref $style eq 'ARRAY'
+            ? IWL::Static->addMultipleRequest($style, 'text/css')
+            : IWL::Static->addRequest($style))
+        . '";' . "\n");
 
     return $self->appendChild($import);
 }

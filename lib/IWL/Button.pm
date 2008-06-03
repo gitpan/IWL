@@ -20,7 +20,7 @@ IWL::Button - a button with a background
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Button>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Button>
 
 =head1 DESCRIPTION
 
@@ -64,7 +64,7 @@ Where B<STOCK_ID> is the B<IWL::Stock> id.
 
 Fires when the button has finished loading
 
-=item B<load>
+=item B<adjust>
 
 Fires when the button has finished adjusting
 
@@ -78,7 +78,7 @@ sub new {
 
     my $self = $class->SUPER::new();
 
-    $self->__init(%args);
+    $self->_init(%args);
 
     return $self;
 }
@@ -107,7 +107,7 @@ Parameters: B<TEXT> - the text for the label
 sub setLabel {
     my ($self, $text) = @_;
 
-    $self->{_options}{label} = $text || '';
+    $self->{__anchor}->appendChild(IWL::Text->new($self->{_options}{label} = $text || ''));
     return $self;
 }
 
@@ -177,7 +177,7 @@ sub setFromStock {
     my $label = $stock->getLabel($stock_id);
 
     $self->setLabel($label);
-    $self->setImage($image, $label, $label);
+    $self->setImage($image, $label);
     return $self;
 }
 
@@ -211,12 +211,8 @@ Parameters: B<URL> - the url of the href
 sub setHref {
     my ($self, $url) = @_;
 
-    if (!$self->{__nsAnchor}{added}) {
-	$self->appendChild($self->{__nsAnchor});
-	$self->{__nsAnchor}{added} = 1;
-    }
-    $self->{__nsAnchor}->setHref($url);
-    if ($url =~ /JavaScript/i) {
+    $self->{__anchor}->setHref($url);
+    if ($url =~ /javascript/i) {
         $self->signalConnect(click => $url);
     } else {
         $self->signalConnect(click => "document.location.href = '$url'");
@@ -286,7 +282,7 @@ sub getSrc {
 }
 
 sub getHref {
-    return shift->{__nsAnchor}->getHref;
+    return shift->{__anchor}->getHref;
 }
 
 # Protected
@@ -298,6 +294,9 @@ sub _realize {
     my $options    = {};
 
     $self->SUPER::_realize;
+
+    $self->{__anchor}->prependChild($self->{image}->clone)
+        unless $self->getLabel;
 
     $self->{_options}{visibility} = $visibility if $visibility;
     $self->setStyle(visibility => 'hidden');
@@ -318,21 +317,18 @@ sub _setupDefaultClass {
     return $self;
 }
 
-# Internal
-#
-sub __init {
+sub _init {
     my ($self, %args) = @_;
     my $anchor = IWL::Anchor->new;
     my $image  = IWL::Image->new;
     my $id     = $args{id};
 
-    $self->{_defaultClass}     = 'button';
-    $image->{_ignore}          = 1;
+    $self->{_defaultClass}   = 'button';
+    $image->{_ignore}        = 1;
 
-    $self->{image}             = $image;
-    $self->{__nsAnchor}        = $anchor;
-    $self->{__nsAnchor}{added} = 0;
-    $self->{__parts}           = [IWL::Widget->newMultiple(9)];
+    $self->{image}           = $image;
+    $self->{__anchor}        = $anchor;
+    $self->{__parts}         = [IWL::Widget->newMultiple(9)];
 
     $id = randomize($self->{_defaultClass}) unless $id;
     $self->{_tag} = 'div';
@@ -341,12 +337,15 @@ sub __init {
         $self->appendChild($_);
     }
     $self->{__parts}[4]->appendChild($image);
+    $self->appendChild(IWL::Container->new(tag => 'noscript')->appendChild($anchor));
     $self->setId($id);
 
     $self->{_options}{size} = $args{size} || 'default';
     $self->{_options}{disabled} = $args{disabled} ? 1 : 0;
+    $self->setImage($args{image}, $args{alt}) if defined $args{image};
+    $self->setLabel($args{label})             if defined $args{label};
 
-    delete @args{qw(size id)};
+    delete @args{qw(size id image label alt)};
     $self->_constructorArguments(%args);
     $self->requiredJs('base.js', 'button.js');
 
@@ -355,6 +354,7 @@ sub __init {
     $self->signalConnect(focus => "this.hideFocus = true");
     $self->{_customSignals} = {load => [], adjust => []};
 
+    $self->setSelectable(0);
     return $self;
 }
 

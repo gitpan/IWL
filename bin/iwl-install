@@ -15,28 +15,32 @@ sub recursive(&@);
 
 Getopt::Long::Configure ('no_ignore_case');
 
-my ($opt_docroot, $opt_skindir, $opt_imagedir, $opt_icondir, $opt_help, $opt_jsdir, $opt_cgibin);
+my ($opt_docroot, $opt_skindir, $opt_imagedir, $opt_icondir, $opt_help, $opt_jsdir, $opt_cgibin, $opt_absolute_cgibin, $opt_static_uri_script, $opt_pack);
+my @copy_argv = @ARGV;
 
 GetOptions (
-	'docroot=s'  => \$opt_docroot,
-	'skindir=s'  => \$opt_skindir,
-	'imagedir=s' => \$opt_imagedir,
-	'icondir=s'  => \$opt_icondir,
-	'jsdir=s'    => \$opt_jsdir,
-    'cgibin=s'   => \$opt_cgibin,
-	'help'       => \$opt_help,
+	'docroot=s'           => \$opt_docroot,
+	'skindir=s'           => \$opt_skindir,
+	'imagedir=s'          => \$opt_imagedir,
+	'icondir=s'           => \$opt_icondir,
+	'jsdir=s'             => \$opt_jsdir,
+	'cgibin=s'            => \$opt_cgibin,
+    'absolute_cgibin=s'   => \$opt_absolute_cgibin,
+	'static_uri_script=s' => \$opt_static_uri_script,
+	'packjs'              => \$opt_pack,
+	'help'                => \$opt_help,
 ) or exit 1;
 
 display_help() if $opt_help;
 
 usage_error("The option '--docroot' is mandatory.") unless $opt_docroot;
 
-my $docroot = $opt_docroot;
+my $docroot = File::Spec->rel2abs($opt_docroot);
 die "$docroot: $!" unless -d $docroot;
 
-sanitize($opt_cgibin, $opt_jsdir, $opt_skindir, $opt_imagedir, $opt_icondir);
+sanitize($opt_cgibin, $opt_absolute_cgibin, $opt_jsdir, $opt_skindir, $opt_imagedir, $opt_icondir, $opt_static_uri_script);
 
-my $cgibin = $docroot . ($opt_cgibin || '/cgi-bin');
+my $cgibin = $opt_absolute_cgibin || $docroot . ($opt_cgibin || '/cgi-bin');
 
 my $jsdir    = $opt_jsdir    || '/iwl/jscript';
 my $skindir  = $opt_skindir  || '/iwl/skin';
@@ -48,6 +52,8 @@ my $full_skindir  = $docroot      . $skindir . '/default';
 my $full_imagedir = $full_skindir . $imagedir;
 my $full_icondir  = $full_skindir . $icondir;
 
+my $static_script = $opt_static_uri_script ? $opt_static_uri_script . '?IWLStaticURI=' : '';
+
 die "$cgibin: $!" unless -d $cgibin;
 
 create_conf_file();
@@ -58,6 +64,8 @@ my $sharejs     = $sharedir . '/jscript';
 my $shareskin   = $sharedir . '/skin';
 my $shareimages = $sharedir . '/images';
 my $shareicons  = $sharedir . '/icons';
+
+require Pack if $opt_pack;
 
 mirror $sharedir . '/iwl_demo.pl', $cgibin;
 mirror $sharejs                  , $full_jsdir;
@@ -77,9 +85,10 @@ prefix_replace(
 # PREFIX replace subroutine {{{
 #######################################################################
 sub prefix_replace {
-    my $image = $skindir . '/default' . $imagedir;
-    my $icon  = $skindir . '/default' . $icondir;
+    my $image = $static_script . $skindir . '/default' . $imagedir;
+    my $icon  = $static_script . $skindir . '/default' . $icondir;
 
+    sanitize($image, $icon);
 	return if $image eq '/iwl/skin/default/images' && $icon eq '/iwl/skin/default/images/icons';
 
     foreach my $file (@_) {
@@ -107,7 +116,16 @@ sub prefix_replace {
 # Conf creation subroutine {{{
 #######################################################################
 sub create_conf_file {
+    my $sep = $";
+    $" = "' '";
     my $content = <<EOF;
+# Installated using:
+#   $0 '@copy_argv'
+#
+EOF
+    $" = $sep;
+
+    $content .= <<EOF;
 # The skin name to use
 # 
 # SKIN = "default"
@@ -139,6 +157,20 @@ JS_DIR = "$jsdir"
 #
 # STRICT_LEVEL = "1"
 EOF
+    if ($opt_static_uri_script) {
+        $content .= <<EOF
+
+# The path to the static URIs handling script. It is relative to the document
+# root
+#
+STATIC_URI_SCRIPT = "$opt_static_uri_script"
+
+# The absolute path to the document root
+#
+DOCUMENT_ROOT = "$docroot"
+EOF
+    }
+
     my $conf_name = $cgibin . '/iwl.conf';
     $conf_name .= '.new' if -s $conf_name;
     local *CONF;
@@ -161,13 +193,25 @@ Usage: $0 [OPTIONS]
     -h, --help              print this help message
 
     Optional:
-        -j, --jsdir=DIR     the javascript dir, relative to the document root
-        -s, --skindir=DIR   the skins dir, relative to the document root
-        --imagedir=DIR      the image dir, relative to the default skin dir
-        --icondir=DIR       the icon dir, relative to the default icon dir
+        -j, --jsdir=URI     the javascript dir, relative to the document root
+        --skindir=URI       the skins dir, relative to the document root
+        --imagedir=URI      the image dir, relative to the default skin dir
+        --icondir=URI       the icon dir, relative to the default icon dir
 
-        -c, --cgibin=DIR    the cgi-bin directory, relative to the document root
+        -c, --cgibin=URI    the cgi-bin directory, relative to the document root
                             /cgi-bin is assumed if none is specified
+
+        --absolute_cgibin=DIR
+                            the absolute path to the server's cgi-bin directory
+
+        --static_uri_script=SCRIPT
+                            the static script path, relative to the
+                            document root
+
+        --packjs            if specified, will pack all JavaScript files using
+                            Pack. This option is for TESTING purposes only!
+                            (http://dean.edwards.name/download/#packer)
+                            
 
 EOF
 	exit 0;
@@ -210,9 +254,32 @@ sub recursive(&@) {
         );
 }
 
+sub packjs {
+    my ($from, $to) = @_;
+    my $old = $/;
+    local *INFILE;
+    local *OUTFILE;
+    open INFILE, "$from" or return;
+    open OUTFILE, "> $to" or return;
+    undef $/;
+    my $js = <INFILE>;
+    close INFILE;
+
+    $/ = $old;
+
+    print OUTFILE Pack::pack($js, 62, 1, 0);
+    close OUTFILE;
+}
+
 sub mirror {
     mkdir_p($_[1]);
-    recursive { -d $_[0] ? do { mkdir($_[1]) unless -d $_[1] } : copy(@_) } @_;
+    recursive {
+        -d $_[0]
+          ? do { mkdir($_[1]) unless -d $_[1] }
+          : $opt_pack && substr($_[0], -3) eq '.js'
+            ? packjs(@_)
+            : copy(@_) 
+    } @_;
 }
 #######################################################################
 # File::Mirror }}}
@@ -226,7 +293,7 @@ sub mkdir_p {
     my @path = File::Spec->splitdir($path);
     my $partial = $path[0];
     mkdir $partial or die "$partial: $!\n"
-      unless -d $partial;
+      unless -d $partial || !$partial;
     foreach (@path[1 .. $#path]) {
         $partial = File::Spec->catdir($partial, $_);
         mkdir $partial or die "$partial: $!\n"
@@ -237,6 +304,7 @@ sub mkdir_p {
 sub sanitize {
     foreach (@_) {
         $_ = '/' . $_ if $_ && index $_, '/';
+        $_ =~ s{/+}{/}g;
     }
 }
 

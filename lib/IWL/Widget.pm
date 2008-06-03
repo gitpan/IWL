@@ -5,9 +5,8 @@ package IWL::Widget;
 
 use strict;
 
-use base qw(IWL::Object IWL::RPC::Request);
+use base qw(IWL::Object IWL::RPC::Request IWL::DND);
 use IWL::Config qw(%IWLConfig);
-use IWL::Script;
 
 =head1 NAME
 
@@ -15,7 +14,7 @@ IWL::Widget - the base widget object
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget>
 
 =head1 DESCRIPTION
 
@@ -26,12 +25,6 @@ The Widget package provides basic methods that every widget inherits.
 IWL::Widget->new ([B<%ARGS>])
 
 Where B<%ARGS> is an optional hash parameter with with key-value options.
-
-IWL::Widget->newMultiple (B<ARGS>, B<ARGS>, ...)
-
-Returns an array of multiple widgets, one for each B<ARGS>.
-
-Parameters: B<ARGS> - a hash ref of arguments, or a integer, specifying how many widgets to create without any arguments
 
 =head1 SIGNALS
 
@@ -99,13 +92,24 @@ Fires when a key on the keyboard is released
 
 =back
 
+=head1 EVENTS
+
+Every widget signal will also be emitted as an event, if it was registered. The event name is the widget's class, delimeted by a I<'-'>, and camelized signal name. Examples:
+
+    IWL-Widget-click            signal name: 'click'
+    IWL-NavBar-activatePath     signal name: 'activate_path'
+
+Unless otherwise noted, the perl callback called by the event handler, will only receive the serialized signal event, under the I<eventData> key of the parameter hashref.
+
+See L<IWL::RPC::handleEvent> for more information
+
 =cut
 
 sub new {
     my ($proto, %args) = @_;
     my $class = ref($proto) || $proto;
 
-    my $self = $class->SUPER::new();
+    my $self = $class->SUPER::new(%args);
 
     $self->{_signals} = {
         click     => 1,
@@ -123,34 +127,12 @@ sub new {
     # The style hash
     $self->{_style} = {};
 
+    # Selectable
+    $self->{__selectable} = 1;
+
     $self->_constructorArguments(%args);
 
     return $self;
-}
-
-sub newMultiple {
-    my ($proto, @args) = @_;
-    my @widgets;
-    if (scalar @args == 1 && !ref $args[0]) {
-	foreach (1..$args[0]) {
-	    my $widget = $proto->new;
-	    push @widgets, $widget;
-	}
-    } else {
-        if ($args[0] =~ /^\d+$/) {
-            my $number = shift @args;
-            foreach (1 .. $number) {
-                my $widget = $proto->new(@args);
-                push @widgets, $widget;
-            }
-        } else {
-            foreach my $args (@args) {
-                my $widget = $proto->new(%$args);
-                push @widgets, $widget;
-            }
-        }
-    }
-    return @widgets;
 }
 
 =head1 METHODS
@@ -170,8 +152,11 @@ Returns: returns false if the signal is invalid
 sub signalConnect {
     my ($self, $signal, $callback) = @_;
 
-    if ($self->{_customSignals}{$signal} ||
-	  $signal eq 'mouseenter' || $signal eq 'mouseleave' || $signal eq 'mousewheel'
+    if ($self->{_customSignals}{$signal}
+        || grep {$_ eq $signal} qw(
+            mouseenter mouseleave mousewheel
+            drag_begin drag_motion drag_end drag_hover drag_drop
+           )
     ) {
 	push @{$self->{_customSignals}{$signal}}, $callback;
 	return $self;
@@ -187,21 +172,36 @@ sub signalConnect {
     } else {
 	$callbacks .= "; $callback";
     }
-    $self->setAttribute("on$signal" => $callbacks, 'none');
+    $self->setAttribute("on$signal" => $callbacks);
 
     return $self;
 }
 
-=item B<signalDisconnect> (B<SIGNAL>, B<EXPR>)
+=item B<signalDisconnect> ([B<SIGNAL>], [B<EXPR>])
 
 Disconnects the expression from the signal handler
 
-Parameters: B<SIGNAL> - the signal, B<EXPR> - the javascript expression to be disconnected
+Parameters: B<SIGNAL> - the signal. If omitted, all signal handlers wil be removed, B<EXPR> - the javascript expression to be disconnected. If omitted, all expressions for the given signal will be removed.
 
 =cut
 
 sub signalDisconnect {
     my ($self, $signal, $callback) = @_;
+
+    if ($signal && !$callback) {
+        if ($self->{_customSignals}{$signal}) {
+            $self->{_customSignals}{$signal} = [];
+            return $self;
+        } elsif (exists $self->{_signals}{$signal}) {
+            $self->deleteAttribute("on$signal");
+            return $self;
+        }
+        return;
+    } elsif (!$signal) {
+        $self->{_customSignals}{$_} = [] foreach keys %{$self->{_customSignals}};
+        $self->deleteAttribute("on$_") foreach keys %{$self->{_signals}};
+        return $self;
+    }
 
     if ($self->{_customSignals}{$signal}) {
 	foreach my $cb (@{$self->{_customSignals}{$signal}}) {
@@ -217,7 +217,7 @@ sub signalDisconnect {
     return if $index == -1;
 
     substr $callbacks, $index, length $callback, '';
-    $self->setAttribute("on$signal" => $callbacks, 'none');
+    $self->setAttribute("on$signal" => $callbacks);
 
     return $self;
 }
@@ -227,6 +227,8 @@ sub signalDisconnect {
 Disconnects all of the expressions from the signal handler
 
 Parameters: B<SIGNAL> - the signal
+
+B<DEPRECATED> - use L<IWL::Widget::signalDisconnect> without an expression parameter instead.
 
 =cut
 
@@ -470,33 +472,64 @@ sub getTitle {
     return shift->getAttribute('title', 1);
 }
 
+=item B<setSelectable> (B<BOOL>)
+
+Sets whether the text inside the object can be selected by the user
+
+Parameters: B<BOOL> - if true, the user can select the text of the object (default)
+
+=cut
+
+sub setSelectable {
+    my ($self, $selectable) = @_;
+
+    $self->{__selectable} = !(!$selectable);
+    return $self;
+}
+
+=item B<isSelectable>
+
+Returns true if the user can select the text inside the object
+
+=cut
+
+sub isSelectable {
+    return shift->{__selectable};
+}
+
 # Protected
 #
+=head1 PROTECTED METHODS
+
+The following methods should only be used by classes that inherit
+from B<IWL::Widget>.
+
+=cut
+
 sub _realize {
     my $self = shift;
 
+    $self->IWL::DND::_realize;
     $self->IWL::Object::_realize;
+
+    unless ($self->{__selectable}) {
+        $self->setAttribute(unselectable => 'on');
+        $self->appendClass('iwl-unselectable');
+    }
+
     if ($self->{_customSignals}) {
 	my $id = $self->getId;
-	my $parent = $self->_findTopParent || $self;
 
-	if ($id) {
-	    foreach my $signal (keys %{$self->{_customSignals}}) {
+        if ($id) {
+            foreach my $signal (keys %{$self->{_customSignals}}) {
                 my $expr = join '; ', @{$self->{_customSignals}{$signal}};
-		if ($expr) {
+                if ($expr) {
                     $signal = $self->_namespacedSignalName($signal);
-		    $parent->{_customSignalScript} = IWL::Script->new
-		      unless $parent->{_customSignalScript};
-		    $parent->{_customSignalScript}->appendScript(<<EOF);
-\$('$id').signalConnect('$signal', function() { $expr });
-EOF
+                    $self->_appendInitScript(
+                        "\$('$id').signalConnect('$signal', function() { $expr });"
+                    );
 		}
 	    }
-	}
-	if ($parent->{_customSignalScript} && !$parent->{_customSignalScript}{_added}) {
-            unshift @{$parent->{_tailObjects}}, $parent->{_customSignalScript}
-              if $parent->{_customSignalScript};
-	    $parent->{_customSignalScript}{_added} = 1;
 	}
     }
 
@@ -515,9 +548,7 @@ sub _realizeEvents {
 
     $self->SUPER::_realizeEvents;
 
-    unshift @{$self->{_tailObjects}}, IWL::Script->new->setScript(<<EOF);
-\$('$id').prepareEvents();
-EOF
+    $self->_appendInitScript("\$('$id').prepareEvents();");
 }
 
 sub _constructorArguments {
@@ -543,17 +574,52 @@ sub _registerEvent {
     $package =~ s/-/::/g;
     return unless ref $self eq $package;
 
-    $self->signalConnect($signal => "this.emitEvent('$event', {}, {id: this.id})");
+    $signal =~ s/(?<=\w)([A-Z])/_\l$1/g;
+    $self->signalConnect($signal => "this.emitEvent('$event', {eventData: Event.serialize(arguments[0])}, {id: this.id})");
     return $options;
 }
 
 sub _namespacedSignalName {
     my ($self, $signal) = @_;
     return 'iwl:' . $signal
-      if exists $self->{_customSignals}{$signal};
+      if exists $self->{_customSignals}{$signal}
+      || grep {$_ eq $signal} qw(drag_begin drag_motion drag_end drag_hover drag_drop);
     return 'dom:' . $signal
       if $signal =~ /mouse(?:enter|leave|wheel)/;
     return $signal;
+}
+
+=item B<_matchTerm> (B<TERM>)
+
+Returns I<1> if the widget matches the given term, I<0> if it doesn't, or I<-1> if the term is not supported.
+
+Parameters: B<TERM> - a hash reference with the following key-value pairs:
+
+=over 8
+
+=item B<class>
+
+The class, which is contained in the widget's class attribute
+
+=item B<id>
+
+The id of the widget
+
+=back
+
+=cut
+
+sub _matchTerm {
+    my ($self, $term) = @_;
+    my $ret = -1;
+
+    if ($term->{class}) {
+        $ret = $self->hasClass($term->{class}) ? 1 : 0;
+    } elsif ($term->{id}) {
+        $ret = $self->getId eq $term->{id} ? 1 : 0;
+    }
+
+    return $ret;
 }
 
 # Internal

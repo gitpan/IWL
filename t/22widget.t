@@ -1,26 +1,26 @@
-use Test::More tests => 28;
+use Test::More tests => 37;
 
 use IWL::Widget;
+use IWL::Config '%IWLConfig';
 
-{
-	my @widgets = IWL::Widget->newMultiple(10);
-	is (scalar @widgets, 10);
-	isa_ok($widgets[7], 'IWL::Widget');
-
-	@widgets = IWL::Widget->newMultiple({id => 'foo'}, {id => 'bar', class => 'foo'});
-	is (scalar @widgets, 2);
-	isa_ok($widgets[0], 'IWL::Widget');
-}
+$IWLConfig{STRICT_LEVEL} = 2;
 
 {
 	my $widget = IWL::Widget->new;
 	is($widget->signalConnect(click => 'alert(1)'), $widget);
-	is($widget->signalConnect('mousewheel'), $widget);
+    is($widget->signalConnect('mousewheel'), $widget);
 	ok(!$widget->signalConnect('some_signal'));
 
 	$widget->signalConnect(click => 'alert(this)');
 	is($widget->signalDisconnect(click => 'alert(1)'), $widget);
 	is($widget->getContent, '< onclick="; alert(this)"></>' . "\n");
+	$widget->signalConnect(click => 'window.alert(2)');
+	$widget->signalConnect(click => 'window.alert(this)');
+	$widget->signalConnect(mouseover => 'alert("this")');
+	is($widget->signalDisconnect('click'), $widget);
+	is($widget->getContent, '< onmouseover="alert(&quot;this&quot;)"></>' . "\n");
+	is($widget->signalDisconnect, $widget);
+	is($widget->getContent, '<></>' . "\n");
 }
 
 {
@@ -59,4 +59,34 @@ use IWL::Widget;
 	is($widget->setName('My name'), $widget);
 	is($widget->setTitle('My title'), $widget);
 	like($widget->getContent, qr/< (?:(?:name="My name"|title="My title")\s*){2}><\/>/);
+}
+
+{
+    my $widget = IWL::Widget->new;
+
+    ok($widget->isSelectable);
+    is($widget->setSelectable(0), $widget);
+    ok(!$widget->isSelectable);
+    $object = $widget->getObject;
+    is_deeply($object, {
+        attributes => {
+            class => 'iwl-unselectable',
+            unselectable => 'on'
+        }
+    });
+}
+
+{
+    my $a = IWL::Widget->new->setAttributes(id => 'top', class => 'object');
+
+    my $a_a = IWL::Widget->new->setAttributes(id => 'middle', class => 'object middle');
+    my $a_a_a = IWL::Widget->new->setAttributes(id => 'bottom1', class => 'object bottom');
+    my $a_a_b = IWL::Widget->new->setAttributes(id => 'bottom2', class => 'object bottom');
+
+    $a->appendChild($a_a->appendChild($a_a_a, $a_a_b));
+    is($a->down({id => 'bottom2'}), $a_a_b);
+    ok(!$a->down({id => 'bottom2'}, {class => 'middle'}));
+    is($a->down({id => 'middle'}, {class => 'middle'}), $a_a);
+    ok(!$a->down({id => 'middle'}, {class => 'top'}));
+    is_deeply([$a->down({class => 'bottom'})], [$a_a_a, $a_a_b]);
 }

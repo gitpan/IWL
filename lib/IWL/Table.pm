@@ -18,7 +18,7 @@ IWL::Table - a table widget
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Table>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Table>
 
 =head1 DESCRIPTION
 
@@ -48,21 +48,10 @@ sub new {
     my ($proto, %args) = @_;
     my $class = ref($proto) || $proto;
 
-    my $self = $class->SUPER::new();
+    my $self = $class->SUPER::new;
 
     $self->{_tag} = "table";
-    if ($args{spacing}) {
-        $self->setAttribute(cellspacing => $args{spacing});
-    } else {
-        $self->setAttribute(cellspacing => 0);
-    }
-    if ($args{padding}) {
-        $self->setAttribute(cellpadding => $args{padding});
-    } else {
-        $self->setAttribute(cellpadding => 0);
-    }
-    delete @args{qw(spacing padding)};
-    $self->IWL::Table::__init(%args);
+    $self->_init(%args);
 
     return $self;
 }
@@ -126,7 +115,7 @@ sub getSummary {
 
 Appends an array of rows to the header to the table. 
 
-Parameters: B<ROW> - a row of IWL::Table::Row(3pm)
+Parameters: B<ROW> - a row of L<IWL::Table::Row>
 
 =cut
 
@@ -143,7 +132,7 @@ sub appendHeader {
 
 Prepends an array of rows to the header to the table. 
 
-Parameters: B<ROW> - a row of IWL::Table::Row(3pm)
+Parameters: B<ROW> - a row of L<IWL::Table::Row>
 
 =cut
 
@@ -160,7 +149,7 @@ sub prependHeader {
 
 Appends an array of rows to the body to the table. 
 
-Parameters: B<ROW> - a row of IWL::Table::Row(3pm)
+Parameters: B<ROW> - a row of L<IWL::Table::Row>
 
 =cut
 
@@ -186,7 +175,7 @@ sub appendBody {
 
 Prepends an array of rows to the body to the table. 
 
-Parameters: B<ROW> - a row of IWL::Table::Row(3pm)
+Parameters: B<ROW> - a row of L<IWL::Table::Row>
 
 =cut
 
@@ -216,7 +205,7 @@ sub prependBody {
 
 Appends an array of rows to the footer to the table. 
 
-Parameters: B<ROW> - a row of IWL::Table::Row(3pm)
+Parameters: B<ROW> - a row of L<IWL::Table::Row>
 
 =cut
 
@@ -233,7 +222,7 @@ sub appendFooter {
 
 Prepends an array of rows to the footer to the table. 
 
-Parameters: B<ROW> - a row of IWL::Table::Row(3pm)
+Parameters: B<ROW> - a row of L<IWL::Table::Row>
 
 =cut
 
@@ -381,18 +370,27 @@ sub _setupDefaultClass {
     $self->{_body}->prependClass($self->{_defaultClass} . '_body');
 }
 
-# Internal
-#
-sub __init {
+sub _init {
     my ($self, %args) = @_;
-
-    $self->{_defaultClass} = 'table';
-    $args{id} = randomize($self->{_defaultClass}) if !$args{id};
-
     my $header = IWL::Table::Container->new(type  => 'header');
     my $footer = IWL::Table::Container->new(type  => 'footer');
     my $body = IWL::Table::Container->new;
     my $caption = IWL::Container->new;
+
+    if ($args{spacing}) {
+        $self->setAttribute(cellspacing => $args{spacing});
+    } else {
+        $self->setAttribute(cellspacing => 0);
+    }
+    if ($args{padding}) {
+        $self->setAttribute(cellpadding => $args{padding});
+    } else {
+        $self->setAttribute(cellpadding => 0);
+    }
+    delete @args{qw(spacing padding)};
+
+    $self->{_defaultClass} = 'table';
+    $args{id} = randomize($self->{_defaultClass}) if !$args{id};
 
     $caption->{_removeEmpty} = 1;
     $caption->{_tag} = 'caption';

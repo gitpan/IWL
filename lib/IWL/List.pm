@@ -16,7 +16,7 @@ IWL::List - a list container
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::List>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Container> -> L<IWL::List>
 
 =head1 DESCRIPTION
 
@@ -44,7 +44,7 @@ sub new {
 
     my $self = $class->SUPER::new;
 
-    $self->IWL::List::__init(%args);
+    $self->_init(%args);
 
     return $self;
 }
@@ -57,7 +57,7 @@ sub new {
 
 Appends an object as a list item to the current list
 
-Parameters: B<OBJECT> - the IWL::Object(3pm), B<%ARGS> - the hash attributes of the list item
+Parameters: B<OBJECT> - the L<IWL::Object>, B<%ARGS> - the hash attributes of the list item
 
 =cut
 
@@ -72,7 +72,7 @@ sub appendListItem {
 
 Prepends an object as a list item to the current list
 
-Parameters: B<OBJECT> - the IWL::Object(3pm), B<%ARGS> - the hash attributes of the list item
+Parameters: B<OBJECT> - the L<IWL::Object>, B<%ARGS> - the hash attributes of the list item
 
 =cut
 
@@ -119,7 +119,7 @@ sub prependListItemText {
 
 Appends an object as a definition to the current list
 
-Parameters: B<OBJECT> - the IWL::Object(3pm), B<TYPE> - the type of the definition (key[default]/value), B<%ARGS> - the hash attributes of the list item
+Parameters: B<OBJECT> - the L<IWL::Object>, B<TYPE> - the type of the definition (key[default]/value), B<%ARGS> - the hash attributes of the list item
 
 =cut
 
@@ -134,7 +134,7 @@ sub appendDef {
 
 Prepends an object as a definition to the current list
 
-Parameters: B<OBJECT> - the IWL::Object(3pm), B<TYPE> - the type of the definition (key[default]/value), B<%ARGS> - the hash attributes of the list item
+Parameters: B<OBJECT> - the L<IWL::Object>, B<TYPE> - the type of the definition (key[default]/value), B<%ARGS> - the hash attributes of the list item
 
 =cut
 
@@ -177,9 +177,9 @@ sub prependDefText {
     return $li;
 }
 
-# Internal
+# Protected
 #
-sub __init {
+sub _init {
     my ($self, %args) = @_;
 
     if (!$args{type} || $args{type} eq 'unordered') {
@@ -198,6 +198,8 @@ sub __init {
     $self->_constructorArguments(%args);
 }
 
+# Internal
+#
 sub __setup_li {
     my ($self, $data, %args) = @_;
     my $li = IWL::Widget->new;

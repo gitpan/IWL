@@ -13,7 +13,7 @@ IWL::Page::Link - a link object
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Page::Link>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Page::Link>
 
 =head1 DESCRIPTION
 
@@ -29,7 +29,7 @@ IWL::Page::Link->newLinkToCSS (B<URL>, [B<MEDIA>, B<%ARGS>])
 
 A wrapper constructor that creates a link to an external CSS file
 
-Parameters: B<URL> - the url of the css file, B<MEDIA> - the media of the link
+Parameters: B<URL> - the url of the css file, or an array reference of URLs, if both I<STATIC_URI_SCRIPT> and I<STATIC_UNION> options are set, B<MEDIA> - the media of the link
 
 =cut
 
@@ -37,7 +37,7 @@ sub new {
     my ($proto, %args) = @_;
     my $class = ref($proto) || $proto;
 
-    my $self = $class->SUPER::new();
+    my $self = $class->SUPER::new(%args);
 
     $self->{_tag}  = "link";
     $self->{_noChildren} = 1;
@@ -55,10 +55,13 @@ sub new {
 sub newLinkToCSS {
     my ($self, $url, $media, %args) = @_;
     return unless $url;
+    require IWL::Static;
     return IWL::Page::Link->new(
         rel   => 'stylesheet',
         type  => 'text/css',
-        href  => $url,
+        href  => ref $url eq 'ARRAY'
+            ? IWL::Static->addMultipleRequest($url, 'text/css')
+            : IWL::Static->addRequest($url),
         media => $media || 'screen',
 	%args,
     );

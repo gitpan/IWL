@@ -21,7 +21,7 @@ IWL::Upload - a file upload widget
 
 =head1 INHERITANCE
 
-L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Form> -> L<IWL::Upload>
+L<IWL::Error> -> L<IWL::Object> -> L<IWL::Widget> -> L<IWL::Form> -> L<IWL::Upload>
 
 =head1 DESCRIPTION
 
@@ -65,7 +65,7 @@ sub new {
         enctype => 'multipart/form-data'
     );
 
-    $self->__init(%args);
+    $self->_init(%args);
 
     return $self;
 }
@@ -144,7 +144,7 @@ sub printMessage {
     my $page = IWL::Page->new(simple => 1);
     $json->setContent(toJSON({message => $message, data => $data}));
     $page->appendChild($json);
-    $page->print;
+    $page->send(type => 'html');
 }
 
 # Overrides
@@ -198,9 +198,7 @@ sub _setupDefaultClass {
     $self->{__button}->prependClass($self->{_defaultClass} . '_button');
 }
 
-# Internal
-#
-sub __init {
+sub _init {
     my ($self, %args) = @_;
     my $file   = IWL::File->new;
     my $frame  = IWL::IFrame->new;
