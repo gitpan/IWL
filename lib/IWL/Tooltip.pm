@@ -10,7 +10,8 @@ use base qw(IWL::Widget);
 use IWL::String qw(escape randomize);
 use IWL::JSON qw(toJSON);
 
-use Locale::TextDomain qw(org.bloka.iwl);
+use IWL::Config '%IWLConfig';
+use Locale::TextDomain $IWLConfig{TEXT_DOMAIN};
 
 =head1 NAME
 
@@ -43,6 +44,20 @@ True, if the tooltip should follow the mouse
 =item B<parent>
 
 The parent element of the tooltip
+
+=item B<simple>
+
+The created tooltip will be represented by a single element, without bubbles
+
+=back
+
+=head1 SIGNALS
+
+=over 4
+
+=item B<load>
+
+Fires when the tooltip has been loaded
 
 =back
 
@@ -185,15 +200,17 @@ sub _init {
     $self->{_options} = {style => {}};
     $self->{_options}{centerOnElement} = $args{centerOnElement} ? 1 : 0 if defined $args{centerOnElement};
     $self->{_options}{followMouse}     = $args{followMouse}     ? 1 : 0 if defined $args{followMouse};
+    $self->{_options}{simple}          = $args{simple}          ? 1 : 0 if defined $args{simple};
     $self->{_options}{parent}          = $args{parent}                  if defined $args{parent};
 
     $self->{_defaultClass} = 'tooltip';
     $args{id} ||= randomize($self->{_defaultClass});
     $self->{_tag} = "div";
 
-    delete @args{qw(centerOnElement followMouse parent)};
+    delete @args{qw(centerOnElement followMouse simple parent)};
     $self->_constructorArguments(%args);
     $self->requiredJs('base.js', 'tooltip.js');
+    $self->{_customSignals} = {load => []};
 
     return $self;
 }
@@ -202,7 +219,7 @@ sub _init {
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2006-2007  Viktor Kojouharov. All rights reserved.
+Copyright (c) 2006-2008  Viktor Kojouharov. All rights reserved.
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See perldoc perlartistic.

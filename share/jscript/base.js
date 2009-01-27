@@ -15,9 +15,12 @@ Object.extend(IWL, {RPC: (function() {
       };
   }
 
-  function eventCompletion(str) {
+  function eventCompletion(str, err) {
       return function(json, params, options) {
-          eval(str);
+          if (json.extras && json.extras.error)
+              eval(err);
+          else
+              eval(str);
       };
   }
 
@@ -68,8 +71,8 @@ Object.extend(IWL, {RPC: (function() {
                               element[options.method].call(element, json, params, options);
                           if (Object.isFunction(options.responseCallback))
                               options.responseCallback.call(element, json, params, options);
-                          if (options.onComplete) {
-                              var callback = eventCompletion(options.onComplete);
+                          if (options.onComplete || options.onError) {
+                              var callback = eventCompletion(options.onComplete, options.onError);
                               callback.call(element, json, params, options);
                           }
                           eventFinalize(element, eventName, options);
@@ -83,8 +86,8 @@ Object.extend(IWL, {RPC: (function() {
                       onComplete: function(or) {
                           if (options.responseCallback && typeof options.responseCallback === 'function')
                               options.responseCallback.call(element, {}, params, options);
-                          if (options.onComplete) {
-                              var callback = eventCompletion(options.onComplete);
+                          if (options.onComplete || options.onError) {
+                              var callback = eventCompletion(options.onComplete, options.onError);
                               callback.call(element, {}, params, options);
                           }
                           eventFinalize(element, eventName, options);
@@ -97,14 +100,17 @@ Object.extend(IWL, {RPC: (function() {
           };
           return element;
       },
-      prepareEvents: function(element) {
+      prepareEvents: function(element, handlers) {
           if (!(element = $(element))) return;
           if (element.preparedEvents) return element;
-          var events = element.readAttribute('iwl:RPCEvents');
-          if (events) {
-              events = unescape(events).evalJSON();
-              for (var name in events)
-                  IWL.RPC.registerEvent(element, name, events[name][0], events[name][1], events[name][2]);
+          if (!handlers) {
+              handlers = element.readAttribute('iwl:RPCEvents');
+              if (handlers)
+                  handlers = unescape(handlers).evalJSON();
+          }
+          if (handlers) {
+              for (var name in handlers)
+                  IWL.RPC.registerEvent(element, name, handlers[name][0], handlers[name][1], handlers[name][2]);
               element.preparedEvents = true;
               return element;
           }
@@ -139,9 +145,10 @@ IWL.Widget = {
   	if (this.current.prepareEvents)
             this.current.prepareEvents();
 	if (this.current._init)
-	    this.current._init.apply(this.current, arguments);
+            this.current._init.apply(this.current, $A(arguments).slice(1));
 
-        this.current.emitSignal('iwl:init');
+        if (!Prototype.Browser.IE || this.current.parentNode)
+            this.current.emitSignal('iwl:init');
         return this.current;
     },
     _abortEvent: function(collection, eventName, exception) {

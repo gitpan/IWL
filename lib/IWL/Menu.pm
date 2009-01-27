@@ -11,7 +11,8 @@ use IWL::String qw(randomize);
 use IWL::JSON qw(toJSON);
 use IWL::Menu::Item;
 
-use Locale::TextDomain qw(org.bloka.iwl);
+use IWL::Config '%IWLConfig';
+use Locale::TextDomain $IWLConfig{TEXT_DOMAIN};
 
 =head1 NAME
 
@@ -38,6 +39,10 @@ Where B<%ARGS> is an optional hash parameter with with key-values.
 =item B<menu_item_activate>
 
 Fires when a menu item has been activated, via double clicking. Receives the activated item as a parameter
+
+=item B<load>
+
+Fires when the menu has been loaded
 
 =back
 
@@ -194,7 +199,7 @@ sub _init {
     $args{id} = randomize($self->{_defaultClass}) if !$args{id};
     $self->_constructorArguments(%args);
     $self->requiredJs('base.js', 'menu.js');
-    $self->{_customSignals} = {menu_item_activate => []};
+    $self->{_customSignals} = {menu_item_activate => [], load => []};
     $self->{_options} = {maxHeight => 0};
     $self->{__bindWidgets} = [];
 }
@@ -218,7 +223,7 @@ sub __setup_menu_separator {
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2006-2007  Viktor Kojouharov. All rights reserved.
+Copyright (c) 2006-2008  Viktor Kojouharov. All rights reserved.
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See perldoc perlartistic.

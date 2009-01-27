@@ -101,6 +101,7 @@ sub getContent {
     }
 
     $self->{childNodes} = [];
+    $self->{_realized} = 0;
 
     return $content;
 }
@@ -119,6 +120,7 @@ sub getObject {
     $object->{environment} = 1;
 
     $self->{childNodes} = [];
+    $self->{_realized} = 0;
 
     return $object;
 }
@@ -127,7 +129,7 @@ sub getObject {
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2006-2007  Viktor Kojouharov. All rights reserved.
+Copyright (c) 2006-2008  Viktor Kojouharov. All rights reserved.
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See perldoc perlartistic.

@@ -13,7 +13,7 @@ use IWL::JSON qw(toJSON);
 use IWL::Label;
 use IWL::Image;
 
-use Locale::TextDomain qw(org.bloka.iwl);
+use Locale::TextDomain $IWLConfig{TEXT_DOMAIN};
 
 use constant TYPE => {
     none     => 1,
@@ -79,6 +79,10 @@ Fires when the contentbox has been hidden
 =item B<close>
 
 Fires when the contentbox has closed
+
+=item B<load>
+
+Fires when the contentbox has been loaded
 
 =back
 
@@ -528,7 +532,7 @@ sub _init {
 
     $self->_constructorArguments(%args);
     $self->requiredJs('base.js', 'dist/dragdrop.js', 'dnd.js', 'resizer.js', 'contentbox.js');
-    $self->{_customSignals} = {close => [], hide => [], show => []};
+    $self->{_customSignals} = {close => [], hide => [], show => [], load => []};
 
     # Callbacks
     return $self;
@@ -559,7 +563,7 @@ sub __add_move {
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2006-2007  Viktor Kojouharov. All rights reserved.
+Copyright (c) 2006-2008  Viktor Kojouharov. All rights reserved.
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See perldoc perlartistic.

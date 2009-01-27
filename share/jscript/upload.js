@@ -5,16 +5,12 @@
  * */
 IWL.Upload = Object.extend(Object.extend({}, IWL.Widget), (function () {
     function adjust() {
-        var button_width = parseInt(this.button.style.width);
-        var file_width = Element.getDimensions(this.file).width;
-        if (!button_width || !file_width) {
-            adjust.bind(this).delay(0.5);
-            return;
-        }
-
-        if (!Prototype.Browser.WebKit)
-            Element.setStyle(this.file, {left: -1 * (file_width - button_width) + 'px'});
-        this.file.setStyle({opacity: 0.001, visibility: 'visible'});
+        var file_width = Element.getWidth(this.file);
+        Element.setStyle(this.file, {
+                marginLeft: -1 * file_width + 'px',
+                opacity: 0.001,
+                visibility: 'visible'
+            });
         this.file.onchange = uploadFile.bindAsEventListener(this);
         this.file.onkeypress = function() {return false;};
         this.file.onpaste = function() {return false;};
@@ -66,8 +62,8 @@ IWL.Upload = Object.extend(Object.extend({}, IWL.Widget), (function () {
     }
 
     return {
-        _init: function(id, form) {
-            var button = $(id + '_button');
+        _init: function(form) {
+            var button = $(this.id + '_button');
             if (!button) {
                 var args = arguments;
                 setTimeout(function () {this._init.apply(this, args)}.bind(this), 500);
@@ -75,14 +71,17 @@ IWL.Upload = Object.extend(Object.extend({}, IWL.Widget), (function () {
             }
             this.options = Object.extend({
                 showTooltip: true
-            }, arguments[2] || {});
-            this.messages = Object.extend({}, arguments[3]);
-            button.createHtmlElement(form);
-            this.file = $(id + '_file');
+            }, arguments[1] || {});
+            this.messages = Object.extend({}, arguments[2]);
+            button.parentNode.createHtmlElement(form);
+            this.file = $(this.id + '_file');
             this.button = button;
-            this.frame = $(id + '_frame');
+            this.frame = $(this.id + '_frame');
             this.tooltip = null;
             adjust.call(this);
+
+            this.loaded = true;
+            this.emitSignal('iwl:load');
         }
     }
 })());

@@ -13,7 +13,8 @@ use IWL::JSON qw(toJSON);
 
 use base 'IWL::Form';
 
-use Locale::TextDomain qw(org.bloka.iwl);
+use IWL::Config '%IWLConfig';
+use Locale::TextDomain $IWLConfig{TEXT_DOMAIN};
 
 =head1 NAME
 
@@ -52,6 +53,10 @@ True, if an information tooltip should be shown
 =item B<upload>
 
 Fires when a file has been uploaded
+
+=item B<load>
+
+Fires when the upload widget has been loaded
 
 =back
 
@@ -221,7 +226,7 @@ sub _init {
     $button->setLabel(__('Browse ...'));
     $file->_constructorArguments(%args);
     $self->requiredJs('base.js', 'upload.js', 'tooltip.js');
-    $self->{_customSignals} = { upload => [] };
+    $self->{_customSignals} = { upload => [], load => [] };
 
     return $self;
 }
@@ -230,7 +235,7 @@ sub _init {
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2006-2007  Viktor Kojouharov. All rights reserved.
+Copyright (c) 2006-2008  Viktor Kojouharov. All rights reserved.
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See perldoc perlartistic.

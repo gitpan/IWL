@@ -1,4 +1,4 @@
-use Test::More tests => 119;
+use Test::More tests => 135;
 
 use IWL::Object;
 use IWL::Config '%IWLConfig';
@@ -137,6 +137,38 @@ my $output;
 }
 
 {
+    my $o = IWL::Object->new;
+    $o->require(css => 'foo.css', js => [qw(base.js foo.js)]);
+    my $data = $o->getObject;
+    is($data->{children}[0]{children}[0]{text}, qq(\@import "/my/skin/darkness/foo.css";\n));
+    is($data->{children}[1]{attributes}{src}, '/jscript/dist/prototype.js');
+    is($data->{children}[6]{attributes}{src}, '/jscript/foo.js');
+
+    $o = $o->new;
+    $o->require(css => 'foo.css', js => [qw(base.js foo.js)]);
+    ok($o->isRequired(css => 'foo.css'));
+    ok($o->isRequired(js => 'base.js'));
+    ok($o->isRequired(js => 'foo.js'));
+    ok(!$o->isRequired(foo => 'bar'));
+    $o->unrequire(js => 'base.js');
+    ok(!$o->isRequired(js => 'base.js'));
+    ok(!$o->isRequired(js => 'foo.js'));
+    $data = $o->getObject;
+    is($data->{children}[0]{children}[0]{text}, qq(\@import "/my/skin/darkness/foo.css";\n));
+
+    $o = $o->new;
+    $o2 = IWL::Test::Object2->new;
+    $o->appendChild($o2);
+    $data = $o->getObject;
+    is($data->{children}[0]{children}[0]{text}, qq(\@import "/my/skin/darkness/foo.css";\n));
+    is($data->{children}[0]{children}[1]{text}, qq(\@import "/my/skin/darkness/foo2.css";\n));
+    is($data->{children}[1]{children}[0]{children}[0]{text}, qq(\@import "/my/skin/darkness/bar.css";\n));
+    is($data->{children}[2]{attributes}{src}, '/jscript/foo.js');
+    is($data->{children}[3]{attributes}{src}, '/jscript/foo2.js');
+    is($data->{children}[4]{attributes}{src}, '/jscript/bar.js');
+}
+
+{
     my $a = IWL::Object->new->setAttributes(id => 'top', class => 'object');
 
     my $a_a = IWL::Object->new->setAttributes(id => 'middle', class => 'object');
@@ -240,3 +272,20 @@ sub PRINT {
 package IWL::Test::Object;
 
 use base 'IWL::Object';
+
+package IWL::Test::Object2;
+
+use base 'IWL::Object';
+
+sub new {
+    my $self = shift->SUPER::new;
+
+    $self->require(js => ['foo.js', 'foo2.js'], css => ['foo.css', 'foo2.css']);
+    return $self;
+}
+
+sub _realize {
+    my $self = shift;
+    $self->require(js => 'bar.js', css => 'bar.css');
+    $self->SUPER::_realize;
+}

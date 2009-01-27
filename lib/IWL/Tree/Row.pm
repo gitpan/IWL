@@ -476,7 +476,10 @@ sub _expandEvent {
     $list = [] unless ref $list eq 'ARRAY';
 
     $response->send(
-        content => '[' . join(',', map {$_->{__ignoreChildren} = 1; $_->getJSON} @$list) . ']',
+        content => '{data: ['
+            . join(',', map {$_->{__ignoreChildren} = 1; $_->getJSON} @$list)
+            . '], extras: ' . (toJSON($extras) || 'null')
+            . '}',
         header => IWL::Object::getJSONHeader,
     );
 }
@@ -556,7 +559,7 @@ sub __create_cell {
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2006-2007  Viktor Kojouharov. All rights reserved.
+Copyright (c) 2006-2008  Viktor Kojouharov. All rights reserved.
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See perldoc perlartistic.

@@ -78,6 +78,10 @@ Fires when a row has collapsed
 
 Fires when a row has expanded
 
+=item B<load>
+
+Fires when the tree has been loaded
+
 =back
 
 =head1 EVENTS
@@ -345,7 +349,8 @@ sub _init {
         unselect_all => [],
         row_activate => [],
         row_collapse => [],
-        row_expand   => []
+        row_expand   => [],
+        load         => [],
     };
     $self->setSelectable(0);
 }
@@ -382,7 +387,7 @@ sub __flag_children {
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2006-2007  Viktor Kojouharov. All rights reserved.
+Copyright (c) 2006-2008  Viktor Kojouharov. All rights reserved.
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See perldoc perlartistic.

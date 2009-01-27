@@ -5,8 +5,6 @@ package IWL::RPC::Request;
 
 use strict;
 
-use IWL::JSON qw(toJSON);
-
 =head1 NAME
 
 IWL::RPC::Request - an RPC Requst helper class
@@ -21,7 +19,7 @@ The RPC Request helper class is an abstract class, which provides RPC functional
 
 =item B<registerEvent> (B<EVENT>, B<URL>, [B<PARAMS>, B<OPTIONS>])
 
-Registers an event handler to the given event. The event will be processed by a handleEvent(3pm) call in the handling script
+Registers an event handler to the given event. The event will be processed by a L<IWL::RPC::handleEvent|IWL::RPC/handleEvent> call in the handling script
 
 Parameters: B<EVENT> - The event name to register. B<URL> the script url, which will provide the event handling. B<PARAMS> - a hash reference of parameters to be passed to the handler subroutine as a parameter. B<OPTIONS> - a hash reference of options to be interpretted by the handler
 
@@ -34,6 +32,10 @@ A javascript expression to be evaluated before the request takes place. It recei
 =item B<onComplete>
 
 A javascript expression to be evaluated after the request takes place
+
+=item B<onError>
+
+A javascript expression to be evaluated, if the response contains an I<error> key in the extra hashref
 
 =item B<emitOnce>
 
@@ -57,11 +59,11 @@ If true, the screen will be fully covered (default: I<false>)
 
 The opacity of the covering element (default: I<0.8>)
 
+=back
+
 =item B<collectData>
 
 If true, all names (or ids) and values of control descendants (such as L<IWL::Entry>s or L<IWL::Slider>s) of the object will be extracted, and passed back to the event handler.
-
-=back
 
 =item B<update>
 
@@ -117,18 +119,11 @@ sub registerEvent {
     return $self;
 }
 
-sub _realizeEvents {
-    my $self = shift;
-
-    $self->setAttribute('iwl:RPCEvents', toJSON($self->{_handlers}), 'escape')
-        if $self->{_handlers};
-}
-
 1;
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2006-2007  Viktor Kojouharov. All rights reserved.
+Copyright (c) 2006-2008  Viktor Kojouharov. All rights reserved.
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See perldoc perlartistic.

@@ -6,6 +6,8 @@ package IWL::Widget;
 use strict;
 
 use base qw(IWL::Object IWL::RPC::Request IWL::DND);
+
+use IWL::JSON qw(toJSON);
 use IWL::Config qw(%IWLConfig);
 
 =head1 NAME
@@ -101,7 +103,7 @@ Every widget signal will also be emitted as an event, if it was registered. The 
 
 Unless otherwise noted, the perl callback called by the event handler, will only receive the serialized signal event, under the I<eventData> key of the parameter hashref.
 
-See L<IWL::RPC::handleEvent> for more information
+See L<IWL::RPC::handleEvent|IWL::RPC/handleEvent> for more information
 
 =cut
 
@@ -228,7 +230,7 @@ Disconnects all of the expressions from the signal handler
 
 Parameters: B<SIGNAL> - the signal
 
-B<DEPRECATED> - use L<IWL::Widget::signalDisconnect> without an expression parameter instead.
+B<DEPRECATED> - use L<IWL::Widget::signalDisconnect|/signalConnect> without an expression parameter instead.
 
 =cut
 
@@ -497,6 +499,17 @@ sub isSelectable {
     return shift->{__selectable};
 }
 
+# Overrides
+#
+sub registerEvent {
+    my $self = shift;
+
+    $self->SUPER::registerEvent(@_);
+    $self->require(js => 'base.js');
+
+    return $self;
+}
+
 # Protected
 #
 =head1 PROTECTED METHODS
@@ -533,7 +546,7 @@ sub _realize {
 	}
     }
 
-    $self->_realizeEvents if $self->can('_realizeEvents');
+    $self->_realizeEvents;
     if ($self->can('_setupDefaultClass')) {
 	$self->_setupDefaultClass;
     } else {
@@ -546,9 +559,8 @@ sub _realizeEvents {
     my $id = $self->getId;
     return unless $self->{_handlers} && $id;
 
-    $self->SUPER::_realizeEvents;
-
-    $self->_appendInitScript("\$('$id').prepareEvents();");
+    my $handlers = toJSON($self->{_handlers});
+    $self->_appendInitScript("\$('$id').prepareEvents($handlers);");
 }
 
 sub _constructorArguments {
@@ -561,6 +573,9 @@ sub _constructorArguments {
 	    $self->setClass($args{$key});
 	} elsif ($key eq 'id') {
 	    $self->setId($args{$key});
+        } elsif ($key eq 'environment') {
+            $self->{environment} = $args{environment}
+                if 'IWL::Environment' eq ref $args{environment};
 	} else {
 	    $self->setAttribute($key => $args{$key});
 	}
@@ -648,7 +663,7 @@ sub __setStyle {
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright (c) 2006-2007  Viktor Kojouharov. All rights reserved.
+Copyright (c) 2006-2008  Viktor Kojouharov. All rights reserved.
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself. See perldoc perlartistic.
